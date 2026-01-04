@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions } from 'react-native';
 import Svg, { Path, Line, Rect } from 'react-native-svg';
-import { QuestPanel, ProgressBar, GlowButton } from '../components';
+import { QuestPanel, ProgressBar, GlowButton, CountdownTimer } from '../components';
 import { useGame } from '../context/GameContext';
 import { colors, fontSizes, spacing, glowShadow, touchTarget } from '../styles/theme';
 import { Attribute } from '../types';
@@ -47,6 +47,10 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({ visible, onClose }
 
     const handleAddQuest = () => {
         if (newQuestTitle.trim()) {
+            // Generate end of day deadline
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+
             dispatch({
                 type: 'ADD_DAILY_QUEST',
                 payload: {
@@ -54,11 +58,19 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({ visible, onClose }
                     description: '',
                     attribute: newQuestAttribute,
                     xpReward: 25,
+                    deadline: today.toISOString(),
                 },
             });
             setNewQuestTitle('');
             setShowAddQuest(false);
         }
+    };
+
+    // Get deadline from first quest or use end of today
+    const getDeadline = () => {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        return today.toISOString();
     };
 
     const framePath = `M ${cs} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${cs} Z`;
@@ -100,6 +112,9 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({ visible, onClose }
                             <Text style={styles.closeText}>×</Text>
                         </TouchableOpacity>
                     </View>
+
+                    {/* Countdown Timer */}
+                    <CountdownTimer deadline={getDeadline()} />
 
                     {/* Warning */}
                     <View style={styles.warning}>

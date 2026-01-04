@@ -49,10 +49,10 @@ export const HUDScreen: React.FC = () => {
     ];
 
     const fabItems = [
-        { id: 'status', label: 'STATUS', onPress: () => setActiveModal('status') },
-        { id: 'quests', label: 'QUESTS', onPress: () => setActiveModal('quests') },
-        { id: 'calendar', label: 'CALENDAR', onPress: () => setActiveModal('calendar') },
-        { id: 'settings', label: 'SETTINGS', onPress: () => setActiveModal('settings') },
+        { id: 'status', label: 'STATUS', icon: 'status' as const, onPress: () => setActiveModal('status') },
+        { id: 'quests', label: 'QUESTS', icon: 'quests' as const, onPress: () => setActiveModal('quests') },
+        { id: 'calendar', label: 'CALENDAR', icon: 'calendar' as const, onPress: () => setActiveModal('calendar') },
+        { id: 'settings', label: 'SETTINGS', icon: 'settings' as const, onPress: () => setActiveModal('settings') },
     ];
 
     return (

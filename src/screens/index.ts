@@ -6,3 +6,4 @@ export * from './QuestLogModal';
 export * from './CalendarModal';
 export * from './SettingsModal';
 export * from './PenaltyScreen';
+export * from './SystemConfigScreen';

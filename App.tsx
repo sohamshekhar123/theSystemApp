@@ -10,7 +10,7 @@ import {
   Rajdhani_700Bold,
 } from '@expo-google-fonts/rajdhani';
 import { GameProvider, useGame } from './src/context/GameContext';
-import { AwakeningScreen, HUDScreen, PenaltyScreen } from './src/screens';
+import { AwakeningScreen, HUDScreen, PenaltyScreen, SystemConfigScreen } from './src/screens';
 import { usePenaltyCheck } from './src/hooks/usePenaltyCheck';
 import { colors, fontSizes } from './src/styles/theme';
 
@@ -39,6 +39,11 @@ const AppContent: React.FC = () => {
   // Show awakening for first-time users
   if (state.isFirstLaunch) {
     return <AwakeningScreen />;
+  }
+
+  // Show system configuration if not completed
+  if (!state.isConfigured) {
+    return <SystemConfigScreen />;
   }
 
   // Main HUD

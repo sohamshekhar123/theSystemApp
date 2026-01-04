@@ -9,19 +9,22 @@ type GameAction =
     | { type: 'LOAD_STATE'; payload: GameState }
     | { type: 'SET_PLAYER_NAME'; payload: string }
     | { type: 'COMPLETE_AWAKENING' }
-    | { type: 'ADD_DAILY_QUEST'; payload: Omit<DailyQuest, 'id' | 'createdAt' | 'isComplete'> }
+    | { type: 'COMPLETE_CONFIGURATION' }
+    | { type: 'ADD_DAILY_QUEST'; payload: Omit<DailyQuest, 'id' | 'createdAt' | 'isComplete' | 'isCore'> }
+    | { type: 'ADD_CORE_QUEST'; payload: Omit<DailyQuest, 'id' | 'createdAt' | 'isComplete' | 'isCore'> }
     | { type: 'COMPLETE_DAILY_QUEST'; payload: string }
     | { type: 'DELETE_DAILY_QUEST'; payload: string }
     | { type: 'ADD_BOSS_RAID'; payload: Omit<BossRaid, 'id' | 'createdAt' | 'currentHp' | 'isDefeated'> }
     | { type: 'COMPLETE_SUB_QUEST'; payload: { bossId: string; subQuestId: string } }
     | { type: 'DELETE_BOSS_RAID'; payload: string }
-    | { type: 'SET_PENALTY_TASK'; payload: PenaltyTask }
+    | { type: 'SET_PENALTY_TASK'; payload: Omit<PenaltyTask, 'id'> }
     | { type: 'ACTIVATE_PENALTY' }
     | { type: 'COMPLETE_PENALTY' }
     | { type: 'UPDATE_SETTINGS'; payload: Partial<GameSettings> }
     | { type: 'UPDATE_HP_MP'; payload: { hp?: number; mp?: number } }
     | { type: 'RESET_DAILY_QUESTS' }
     | { type: 'RESET_ALL' };
+
 
 // Game reducer
 const gameReducer = (state: GameState, action: GameAction): GameState => {
@@ -41,16 +44,45 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 isFirstLaunch: false,
             };
 
+        case 'COMPLETE_CONFIGURATION':
+            return {
+                ...state,
+                isConfigured: true,
+            };
+
         case 'ADD_DAILY_QUEST': {
+            // Get end of day deadline for daily quests
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
             const newQuest: DailyQuest = {
                 ...action.payload,
                 id: Date.now().toString(),
                 createdAt: new Date().toISOString(),
                 isComplete: false,
+                isCore: false,
+                deadline: action.payload.deadline || today.toISOString(),
             };
             return {
                 ...state,
                 dailyQuests: [...state.dailyQuests, newQuest],
+            };
+        }
+
+        case 'ADD_CORE_QUEST': {
+            // Core quests are locked and set during initial configuration
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+            const coreQuest: DailyQuest = {
+                ...action.payload,
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                createdAt: new Date().toISOString(),
+                isComplete: false,
+                isCore: true,
+                deadline: action.payload.deadline || today.toISOString(),
+            };
+            return {
+                ...state,
+                dailyQuests: [...state.dailyQuests, coreQuest],
             };
         }
 
@@ -183,7 +215,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         case 'SET_PENALTY_TASK':
             return {
                 ...state,
-                penaltyTask: action.payload,
+                penaltyTask: {
+                    ...action.payload,
+                    id: Date.now().toString(),
+                },
             };
 
         case 'ACTIVATE_PENALTY':

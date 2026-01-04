@@ -35,6 +35,8 @@ export interface DailyQuest {
     attribute: 'STR' | 'INT' | 'SOC' | 'HLTH';
     xpReward: number;
     isComplete: boolean;
+    isCore: boolean; // Core quests set during configuration, cannot be edited
+    deadline: string; // ISO date string (23:59:59 for daily quests)
     createdAt: string;
     completedAt?: string;
 }
@@ -46,7 +48,7 @@ export interface BossRaid {
     totalHp: number;
     currentHp: number;
     subQuests: SubQuest[];
-    deadline?: string;
+    deadline: string; // Required deadline for boss raids
     isDefeated: boolean;
     createdAt: string;
     defeatedAt?: string;
@@ -82,6 +84,7 @@ export interface GameState {
     penaltyTask: PenaltyTask | null;
     isPenaltyActive: boolean;
     isFirstLaunch: boolean;
+    isConfigured: boolean; // True after system configuration is complete
     lastDailyReset: string;
     settings: GameSettings;
 }

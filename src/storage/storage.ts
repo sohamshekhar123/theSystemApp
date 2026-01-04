@@ -23,6 +23,7 @@ export const getDefaultGameState = (): GameState => ({
     penaltyTask: null,
     isPenaltyActive: false,
     isFirstLaunch: true,
+    isConfigured: false,
     lastDailyReset: new Date().toISOString(),
     settings: DEFAULT_SETTINGS,
 });
