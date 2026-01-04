@@ -76,6 +76,14 @@ export interface PenaltyTask {
     description: string;
 }
 
+export interface SystemNotification {
+    id: string;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'penalty';
+    showConfirm?: boolean;
+}
+
 export interface GameState {
     player: Player;
     dailyQuests: DailyQuest[];
@@ -85,6 +93,7 @@ export interface GameState {
     isPenaltyActive: boolean;
     isFirstLaunch: boolean;
     isConfigured: boolean; // True after system configuration is complete
+    systemNotification: SystemNotification | null;
     lastDailyReset: string;
     settings: GameSettings;
 }

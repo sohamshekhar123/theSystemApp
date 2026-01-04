@@ -7,3 +7,4 @@ export * from './CalendarModal';
 export * from './SettingsModal';
 export * from './PenaltyScreen';
 export * from './SystemConfigScreen';
+export * from './SideQuestModal';

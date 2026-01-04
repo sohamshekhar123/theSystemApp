@@ -10,7 +10,9 @@ export const colors = {
 
     // Accent colors  
     alertRed: '#FF3333',
+    crimson: '#990000',
     gold: '#FFD700',
+    white: '#FFFFFF',
 
     // UI colors
     dimmed: '#4A5568',
@@ -53,6 +55,13 @@ export const glowShadow = {
         shadowRadius: 25,
         elevation: 15,
     },
+    blue: {
+        shadowColor: '#0055FF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 15,
+        elevation: 10,
+    },
     red: {
         shadowColor: colors.alertRed,
         shadowOffset: { width: 0, height: 0 },
@@ -61,7 +70,7 @@ export const glowShadow = {
         elevation: 10,
     },
     gold: {
-        shadowColor: colors.gold,
+        shadowColor: '#FFD700',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.6,
         shadowRadius: 10,

@@ -1,6 +1,6 @@
 // Global game state context
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { GameState, DailyQuest, BossRaid, SubQuest, Player, PenaltyTask, GameSettings } from '../types';
+import { GameState, DailyQuest, BossRaid, SubQuest, Player, PenaltyTask, GameSettings, SystemNotification } from '../types';
 import storage, { getDefaultGameState } from '../storage/storage';
 import { calculateRank, getTotalLevels } from '../utils/rankCalculator';
 
@@ -23,6 +23,8 @@ type GameAction =
     | { type: 'UPDATE_SETTINGS'; payload: Partial<GameSettings> }
     | { type: 'UPDATE_HP_MP'; payload: { hp?: number; mp?: number } }
     | { type: 'RESET_DAILY_QUESTS' }
+    | { type: 'SHOW_NOTIFICATION'; payload: SystemNotification }
+    | { type: 'HIDE_NOTIFICATION' }
     | { type: 'RESET_ALL' };
 
 
@@ -251,6 +253,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                     hp: action.payload.hp ?? state.player.hp,
                     mp: action.payload.mp ?? state.player.mp,
                 },
+            };
+
+        case 'SHOW_NOTIFICATION':
+            return {
+                ...state,
+                systemNotification: action.payload,
+            };
+
+        case 'HIDE_NOTIFICATION':
+            return {
+                ...state,
+                systemNotification: null,
             };
 
         case 'RESET_DAILY_QUESTS':

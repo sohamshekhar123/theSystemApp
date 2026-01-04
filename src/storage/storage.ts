@@ -24,6 +24,7 @@ export const getDefaultGameState = (): GameState => ({
     isPenaltyActive: false,
     isFirstLaunch: true,
     isConfigured: false,
+    systemNotification: null,
     lastDailyReset: new Date().toISOString(),
     settings: DEFAULT_SETTINGS,
 });

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, StatusBar, Dimensions, Animated, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Circle, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { ProgressBar, FloatingActionButton, StatIcon } from '../components';
+import { ProgressBar, FloatingActionButton, StatIcon, QuestPanel, CountdownTimer } from '../components';
 import { useGame } from '../context/GameContext';
 import { getTotalLevels, RANK_NAMES } from '../utils/rankCalculator';
 import { colors, fontSizes, spacing, glowShadow } from '../styles/theme';
@@ -11,13 +11,14 @@ import { StatusModal } from './StatusModal';
 import { QuestLogModal } from './QuestLogModal';
 import { CalendarModal } from './CalendarModal';
 import { SettingsModal } from './SettingsModal';
+import { SideQuestModal } from './SideQuestModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-type ModalType = 'status' | 'quests' | 'calendar' | 'settings' | null;
+type ModalType = 'status' | 'quests' | 'calendar' | 'settings' | 'sidequests' | null;
 
 export const HUDScreen: React.FC = () => {
-    const { state } = useGame();
+    const { state, dispatch } = useGame();
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const pulseAnim = useRef(new Animated.Value(0.8)).current;
 
@@ -35,7 +36,7 @@ export const HUDScreen: React.FC = () => {
 
     const totalLevels = getTotalLevels(state.player.attributes);
     const statusFrameWidth = SCREEN_WIDTH - 32;
-    const statusFrameHeight = 320;
+    const statusFrameHeight = 280; // Reduced to make room for quests
     const cs = 18; // Corner size
 
     // STATUS frame path
@@ -48,9 +49,21 @@ export const HUDScreen: React.FC = () => {
         `M ${cs + 12} ${statusFrameHeight} L ${cs} ${statusFrameHeight} L 0 ${statusFrameHeight - cs} L 0 ${statusFrameHeight - cs - 12}`,
     ];
 
+    // Get end of day deadline for display
+    const getDeadline = () => {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        return today.toISOString();
+    };
+
+    const handleCompleteQuest = (questId: string) => {
+        dispatch({ type: 'COMPLETE_DAILY_QUEST', payload: questId });
+    };
+
     const fabItems = [
         { id: 'status', label: 'STATUS', icon: 'status' as const, onPress: () => setActiveModal('status') },
         { id: 'quests', label: 'QUESTS', icon: 'quests' as const, onPress: () => setActiveModal('quests') },
+        { id: 'sidequests', label: 'SIDE QUESTS', icon: 'add' as const, onPress: () => setActiveModal('sidequests') },
         { id: 'calendar', label: 'CALENDAR', icon: 'calendar' as const, onPress: () => setActiveModal('calendar') },
         { id: 'settings', label: 'SETTINGS', icon: 'settings' as const, onPress: () => setActiveModal('settings') },
     ];
@@ -92,12 +105,9 @@ export const HUDScreen: React.FC = () => {
                     </Svg>
 
                     <View style={styles.statusContent}>
-                        {/* Header */}
-                        <Text style={styles.statusTitle}>STATUS</Text>
-
                         {/* Profile Row */}
                         <View style={styles.profileRow}>
-                            {/* Avatar placeholder */}
+                            {/* Avatar */}
                             <View style={styles.avatarContainer}>
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>{state.player.name.charAt(0)}</Text>
@@ -107,11 +117,11 @@ export const HUDScreen: React.FC = () => {
                             {/* Info */}
                             <View style={styles.profileInfo}>
                                 <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>TITLE:</Text>
+                                    <Text style={styles.infoLabel}>TITLE: </Text>
                                     <Text style={styles.infoValue}>{state.player.name}</Text>
                                 </View>
                                 <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>JOB:</Text>
+                                    <Text style={styles.infoLabel}>JOB: </Text>
                                     <Text style={styles.infoValue}>Hunter</Text>
                                 </View>
                             </View>
@@ -126,22 +136,42 @@ export const HUDScreen: React.FC = () => {
                         {/* Divider */}
                         <View style={styles.divider} />
 
-                        {/* Stats Grid */}
+                        {/* Stats Grid - 2 columns */}
                         <View style={styles.statsGrid}>
-                            <View style={styles.statsRow}>
-                                <StatIcon stat="STR" value={state.player.attributes.STR.level} />
-                                <StatIcon stat="VIT" value={state.player.attributes.HLTH.level} bonus={1} />
+                            <View style={styles.statsColumn}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statIcon}>💪</Text>
+                                    <Text style={styles.statLabel}>STR:</Text>
+                                    <Text style={styles.statValue}>{state.player.attributes.STR.level}</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statIcon}>⚡</Text>
+                                    <Text style={styles.statLabel}>AGI:</Text>
+                                    <Text style={styles.statValue}>35</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statIcon}>👁</Text>
+                                    <Text style={styles.statLabel}>PER:</Text>
+                                    <Text style={styles.statValue}>{state.player.attributes.SOC.level}</Text>
+                                    <Text style={styles.statBonus}>+1</Text>
+                                </View>
                             </View>
-                            <View style={styles.statsRow}>
-                                <StatIcon stat="AGI" value={35} />
-                                <StatIcon stat="INT" value={state.player.attributes.INT.level} />
-                            </View>
-                            <View style={styles.statsRow}>
-                                <StatIcon stat="PER" value={state.player.attributes.SOC.level} bonus={1} />
-                                <View style={styles.abilityPoints}>
-                                    <Text style={styles.abilityLabel}>Ability</Text>
-                                    <Text style={styles.abilityLabel}>Points</Text>
-                                    <Text style={styles.abilityValue}>7</Text>
+                            <View style={styles.statsColumn}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statIcon}>❤️</Text>
+                                    <Text style={styles.statLabel}>VIT:</Text>
+                                    <Text style={styles.statValue}>{state.player.attributes.HLTH.level}</Text>
+                                    <Text style={styles.statBonus}>+1</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statIcon}>🧠</Text>
+                                    <Text style={styles.statLabel}>INT:</Text>
+                                    <Text style={styles.statValue}>{state.player.attributes.INT.level}</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statLabel}>Ability</Text>
+                                    <Text style={styles.statLabel}>Points</Text>
+                                    <Text style={styles.statValue}>7</Text>
                                 </View>
                             </View>
                         </View>
@@ -150,16 +180,46 @@ export const HUDScreen: React.FC = () => {
 
                 {/* Daily Quests Section */}
                 <View style={styles.questSection}>
-                    <Text style={styles.sectionTitle}>Daily Quests</Text>
-                    <Text style={styles.sectionSubtitle}>Complete these daily goals to build your streak and increase your stats</Text>
+                    <View style={styles.questHeader}>
+                        <Text style={styles.sectionTitle}>DAILY QUESTS</Text>
+                    </View>
+                    <CountdownTimer deadline={getDeadline()} label="TIME LEFT" />
 
-                    {/* Quest summary */}
+                    {/* Quest Items */}
+                    {state.dailyQuests.length === 0 ? (
+                        <Text style={styles.noQuests}>No quests configured</Text>
+                    ) : (
+                        state.dailyQuests.map(quest => (
+                            <QuestPanel
+                                key={quest.id}
+                                quest={quest}
+                                onComplete={handleCompleteQuest}
+                            />
+                        ))
+                    )}
+
+                    {/* Quest Progress Summary */}
                     <View style={styles.questSummary}>
                         <Text style={styles.questProgress}>
-                            {state.dailyQuests.filter(q => q.isComplete).length} / {state.dailyQuests.length} Complete
+                            {state.dailyQuests.filter(q => q.isComplete).length} / {state.dailyQuests.length} COMPLETE
                         </Text>
                     </View>
                 </View>
+
+                {/* Side Quests Preview */}
+                {state.bossRaids.filter(b => !b.isDefeated).length > 0 && (
+                    <View style={styles.sideQuestSection}>
+                        <Text style={styles.sectionTitle}>SIDE QUESTS</Text>
+                        {state.bossRaids.filter(b => !b.isDefeated).slice(0, 2).map(quest => (
+                            <View key={quest.id} style={styles.sideQuestPreview}>
+                                <Text style={styles.sideQuestTitle}>{quest.name}</Text>
+                                <Text style={styles.sideQuestDeadline}>
+                                    DUE: {new Date(quest.deadline).toLocaleDateString()}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
             </ScrollView>
 
             {/* FAB Menu */}
@@ -168,6 +228,7 @@ export const HUDScreen: React.FC = () => {
             {/* Modals */}
             <StatusModal visible={activeModal === 'status'} onClose={() => setActiveModal(null)} />
             <QuestLogModal visible={activeModal === 'quests'} onClose={() => setActiveModal(null)} />
+            <SideQuestModal visible={activeModal === 'sidequests'} onClose={() => setActiveModal(null)} />
             <CalendarModal visible={activeModal === 'calendar'} onClose={() => setActiveModal(null)} />
             <SettingsModal visible={activeModal === 'settings'} onClose={() => setActiveModal(null)} />
         </SafeAreaView>
@@ -278,7 +339,37 @@ const styles = StyleSheet.create({
         marginVertical: spacing.md,
     },
     statsGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    statsColumn: {
         flex: 1,
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.xs,
+    },
+    statIcon: {
+        fontSize: fontSizes.md,
+        marginRight: spacing.xs,
+    },
+    statLabel: {
+        fontFamily: 'Rajdhani-SemiBold',
+        fontSize: fontSizes.sm,
+        color: colors.dimmed,
+        marginRight: spacing.xs,
+    },
+    statValue: {
+        fontFamily: 'Rajdhani-Bold',
+        fontSize: fontSizes.md,
+        color: colors.paleCyan,
+    },
+    statBonus: {
+        fontFamily: 'Rajdhani-Bold',
+        fontSize: fontSizes.sm,
+        color: colors.electricCyan,
+        marginLeft: 2,
     },
     statsRow: {
         flexDirection: 'row',
@@ -304,11 +395,22 @@ const styles = StyleSheet.create({
         marginTop: spacing.xl,
         paddingBottom: 100,
     },
+    questHeader: {
+        marginBottom: spacing.md,
+    },
+    noQuests: {
+        fontFamily: 'Rajdhani-Regular',
+        fontSize: fontSizes.md,
+        color: colors.dimmed,
+        textAlign: 'center',
+        padding: spacing.lg,
+    },
     sectionTitle: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.xl,
-        color: colors.paleCyan,
+        color: colors.electricCyan,
         textAlign: 'center',
+        letterSpacing: 2,
         marginBottom: spacing.xs,
     },
     sectionSubtitle: {
@@ -320,11 +422,34 @@ const styles = StyleSheet.create({
     },
     questSummary: {
         alignItems: 'center',
+        marginTop: spacing.md,
     },
     questProgress: {
         fontFamily: 'Rajdhani-SemiBold',
         fontSize: fontSizes.md,
         color: colors.electricCyan,
+    },
+    sideQuestSection: {
+        marginTop: spacing.lg,
+        marginBottom: spacing.xxl,
+    },
+    sideQuestPreview: {
+        borderWidth: 1,
+        borderColor: colors.gold,
+        padding: spacing.md,
+        marginBottom: spacing.sm,
+        backgroundColor: 'rgba(255, 215, 0, 0.05)',
+    },
+    sideQuestTitle: {
+        fontFamily: 'Rajdhani-Bold',
+        fontSize: fontSizes.md,
+        color: colors.paleCyan,
+    },
+    sideQuestDeadline: {
+        fontFamily: 'Rajdhani-SemiBold',
+        fontSize: fontSizes.sm,
+        color: colors.gold,
+        marginTop: spacing.xs,
     },
 });
 

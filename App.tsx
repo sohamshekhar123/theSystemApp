@@ -12,7 +12,10 @@ import {
 import { GameProvider, useGame } from './src/context/GameContext';
 import { AwakeningScreen, HUDScreen, PenaltyScreen, SystemConfigScreen } from './src/screens';
 import { usePenaltyCheck } from './src/hooks/usePenaltyCheck';
+import { useQuestNotifications } from './src/hooks/useQuestNotifications';
 import { colors, fontSizes } from './src/styles/theme';
+
+import { SystemNotification } from './src/components';
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
@@ -21,6 +24,9 @@ SplashScreen.preventAutoHideAsync();
 const AppContent: React.FC = () => {
   const { state, isLoading } = useGame();
   const { isPenaltyActive, completePenalty } = usePenaltyCheck();
+
+  // Initialize notifications
+  useQuestNotifications();
 
   if (isLoading) {
     return (
@@ -31,23 +37,20 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Show penalty screen if active
-  if (isPenaltyActive) {
-    return <PenaltyScreen onComplete={completePenalty} />;
-  }
-
-  // Show awakening for first-time users
-  if (state.isFirstLaunch) {
-    return <AwakeningScreen />;
-  }
-
-  // Show system configuration if not completed
-  if (!state.isConfigured) {
-    return <SystemConfigScreen />;
-  }
-
-  // Main HUD
-  return <HUDScreen />;
+  return (
+    <>
+      <SystemNotification />
+      {isPenaltyActive ? (
+        <PenaltyScreen onComplete={completePenalty} />
+      ) : state.isFirstLaunch ? (
+        <AwakeningScreen />
+      ) : !state.isConfigured ? (
+        <SystemConfigScreen />
+      ) : (
+        <HUDScreen />
+      )}
+    </>
+  );
 };
 
 // Root App Component

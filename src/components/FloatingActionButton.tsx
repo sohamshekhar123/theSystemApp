@@ -1,14 +1,14 @@
 // FloatingActionButton Component - Expandable menu with glowing icons
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { User, Scroll, Calendar, Settings, Menu, X } from 'lucide-react-native';
+import { User, Scroll, Calendar, Settings, Menu, X, PlusCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, touchTarget, glowShadow } from '../styles/theme';
 
 interface FABItem {
     id: string;
     label: string;
-    icon: 'status' | 'quests' | 'calendar' | 'settings';
+    icon: 'status' | 'quests' | 'calendar' | 'settings' | 'add';
     onPress: () => void;
 }
 
@@ -21,6 +21,7 @@ const ICONS = {
     quests: Scroll,
     calendar: Calendar,
     settings: Settings,
+    add: PlusCircle,
 };
 
 export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ items }) => {

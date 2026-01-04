@@ -11,3 +11,4 @@ export { QuestItem } from './QuestItem';
 export { QuestPanel } from './QuestPanel';
 export { StatIcon } from './StatIcon';
 export { CountdownTimer } from './CountdownTimer';
+export { SystemNotification } from './SystemNotification';
