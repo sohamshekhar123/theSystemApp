@@ -1,10 +1,13 @@
-// Status Window Modal - Detailed attributes display
+// Status Window Modal - Full stats view with Solo Leveling style
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
-import { SystemWindow, ProgressBar } from '../components';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import Svg, { Path, Line } from 'react-native-svg';
+import { ProgressBar, StatIcon } from '../components';
 import { useGame } from '../context/GameContext';
 import { getTotalLevels, getRankProgress, getLevelsToNextRank, RANK_NAMES } from '../utils/rankCalculator';
-import { colors, fontSizes, spacing } from '../styles/theme';
+import { colors, fontSizes, spacing, glowShadow } from '../styles/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface StatusModalProps {
     visible: boolean;
@@ -13,137 +16,144 @@ interface StatusModalProps {
 
 export const StatusModal: React.FC<StatusModalProps> = ({ visible, onClose }) => {
     const { state } = useGame();
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
     const totalLevels = getTotalLevels(state.player.attributes);
     const rankProgress = getRankProgress(totalLevels);
     const levelsToNext = getLevelsToNextRank(totalLevels);
 
+    const modalWidth = SCREEN_WIDTH * 0.92;
+    const modalHeight = 500;
+    const cs = 15;
+
     useEffect(() => {
         if (visible) {
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }).start();
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 100, friction: 10 }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            ]).start();
         } else {
-            fadeAnim.setValue(0);
+            scaleAnim.setValue(0.9);
+            opacityAnim.setValue(0);
         }
     }, [visible]);
 
-    const getAttributeColor = (attr: string) => {
-        switch (attr) {
-            case 'STR': return colors.alertRed;
-            case 'INT': return colors.electricCyan;
-            case 'SOC': return '#FF9F43';
-            case 'HLTH': return '#00D68F';
-            default: return colors.electricCyan;
-        }
-    };
+    if (!visible) return null;
+
+    const framePath = `M ${cs} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${cs} Z`;
+
+    const corners = [
+        `M 0 ${cs + 10} L 0 ${cs} L ${cs} 0 L ${cs + 10} 0`,
+        `M ${modalWidth - cs - 10} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${cs + 10}`,
+        `M ${modalWidth} ${modalHeight - cs - 10} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${modalWidth - cs - 10} ${modalHeight}`,
+        `M ${cs + 10} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${modalHeight - cs - 10}`,
+    ];
 
     return (
-        <SystemWindow visible={visible} onClose={onClose}>
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>STATUS WINDOW</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Text style={styles.closeText}>×</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={styles.overlay}>
+            <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
 
-                {/* Player Info */}
-                <View style={styles.playerSection}>
-                    <View style={styles.nameRow}>
-                        <Text style={styles.label}>NAME:</Text>
-                        <Text style={styles.value}>{state.player.name}</Text>
-                    </View>
-                    <View style={styles.nameRow}>
-                        <Text style={styles.label}>RANK:</Text>
-                        <Text style={[styles.value, { color: colors.gold }]}>
-                            {RANK_NAMES[state.player.rank]}
-                        </Text>
-                    </View>
-                    <View style={styles.nameRow}>
-                        <Text style={styles.label}>TOTAL LEVEL:</Text>
-                        <Text style={styles.value}>{totalLevels}</Text>
-                    </View>
-                </View>
+            <Animated.View style={[
+                styles.modalContainer,
+                { width: modalWidth, height: modalHeight, opacity: opacityAnim, transform: [{ scale: scaleAnim }] }
+            ]}>
+                <Svg width={modalWidth} height={modalHeight} style={StyleSheet.absoluteFill}>
+                    <Path d={framePath} fill={colors.voidBlack} fillOpacity={0.98} />
+                    {Array.from({ length: Math.floor(modalHeight / 4) }).map((_, i) => (
+                        <Line key={i} x1={cs} y1={i * 4} x2={modalWidth - cs} y2={i * 4} stroke={colors.electricCyan} strokeOpacity={0.02} strokeWidth={1} />
+                    ))}
+                    <Path d={framePath} fill="none" stroke={colors.electricCyan} strokeWidth={1.5} />
+                    {corners.map((path, i) => (
+                        <Path key={i} d={path} fill="none" stroke={colors.electricCyan} strokeWidth={2.5} />
+                    ))}
+                </Svg>
 
-                {/* Rank Progress */}
-                {state.player.rank !== 'S' && (
-                    <View style={styles.rankProgress}>
-                        <Text style={styles.sectionTitle}>RANK ADVANCEMENT</Text>
-                        <ProgressBar
-                            current={rankProgress * 100}
-                            max={100}
-                            variant="xp"
-                            showValue={false}
-                            height={12}
-                        />
-                        <Text style={styles.progressText}>
-                            {levelsToNext} LEVELS TO NEXT RANK
-                        </Text>
+                <View style={styles.content}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <Text style={styles.title}>STATUS WINDOW</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <Text style={styles.closeText}>×</Text>
+                        </TouchableOpacity>
                     </View>
-                )}
 
-                {/* Divider */}
-                <View style={styles.divider} />
-
-                {/* Attributes */}
-                <Text style={styles.sectionTitle}>ATTRIBUTES</Text>
-                {Object.entries(state.player.attributes).map(([key, attr]) => (
-                    <Animated.View
-                        key={key}
-                        style={[styles.attributeRow, { opacity: fadeAnim }]}
-                    >
-                        <View style={styles.attributeHeader}>
-                            <View style={[styles.attributeIcon, { borderColor: getAttributeColor(key) }]}>
-                                <Text style={[styles.attributeIconText, { color: getAttributeColor(key) }]}>
-                                    {attr.name}
-                                </Text>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        {/* Player Info */}
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>NAME:</Text>
+                                <Text style={styles.value}>{state.player.name}</Text>
                             </View>
-                            <View style={styles.attributeInfo}>
-                                <Text style={styles.attributeName}>{attr.fullName}</Text>
-                                <Text style={styles.attributeLevel}>LV. {attr.level}</Text>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>RANK:</Text>
+                                <Text style={[styles.value, styles.goldText]}>{RANK_NAMES[state.player.rank]}</Text>
+                            </View>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>TOTAL LV:</Text>
+                                <Text style={styles.value}>{totalLevels}</Text>
                             </View>
                         </View>
-                        <View style={styles.xpBar}>
-                            <ProgressBar
-                                current={attr.xp}
-                                max={attr.maxXp}
-                                variant="xp"
-                                label="XP"
-                                height={10}
-                            />
-                        </View>
-                    </Animated.View>
-                ))}
 
-                {/* Stats Summary */}
-                <View style={styles.divider} />
-                <Text style={styles.sectionTitle}>VITALS</Text>
-                <View style={styles.vitalsRow}>
-                    <View style={styles.vitalItem}>
-                        <Text style={styles.vitalLabel}>HP</Text>
-                        <Text style={[styles.vitalValue, { color: colors.alertRed }]}>
-                            {state.player.hp}/{state.player.maxHp}
-                        </Text>
-                    </View>
-                    <View style={styles.vitalItem}>
-                        <Text style={styles.vitalLabel}>MP</Text>
-                        <Text style={[styles.vitalValue, { color: colors.electricCyan }]}>
-                            {state.player.mp}/{state.player.maxMp}
-                        </Text>
-                    </View>
+                        {/* Rank Progress */}
+                        {state.player.rank !== 'S' && (
+                            <View style={styles.progressSection}>
+                                <ProgressBar current={rankProgress * 100} max={100} variant="xp" showValue={false} height={12} />
+                                <Text style={styles.progressText}>{levelsToNext} LEVELS TO NEXT RANK</Text>
+                            </View>
+                        )}
+
+                        <View style={styles.divider} />
+
+                        {/* Attributes */}
+                        <Text style={styles.sectionTitle}>ATTRIBUTES</Text>
+                        <View style={styles.statsGrid}>
+                            {Object.entries(state.player.attributes).map(([key, attr]) => (
+                                <View key={key} style={styles.statRow}>
+                                    <StatIcon stat={key as any} value={attr.level} />
+                                    <View style={styles.xpBarContainer}>
+                                        <ProgressBar current={attr.xp} max={attr.maxXp} variant="xp" height={8} showValue={false} />
+                                        <Text style={styles.xpText}>{attr.xp}/{attr.maxXp} XP</Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        {/* Vitals */}
+                        <Text style={styles.sectionTitle}>VITALS</Text>
+                        <View style={styles.vitalsRow}>
+                            <View style={styles.vitalItem}>
+                                <StatIcon stat="HP" value={state.player.hp} />
+                                <Text style={styles.vitalMax}>/ {state.player.maxHp}</Text>
+                            </View>
+                            <View style={styles.vitalItem}>
+                                <StatIcon stat="MP" value={state.player.mp} />
+                                <Text style={styles.vitalMax}>/ {state.player.maxMp}</Text>
+                            </View>
+                        </View>
+                    </ScrollView>
                 </View>
-            </ScrollView>
-        </SystemWindow>
+            </Animated.View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(2, 2, 10, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContainer: {
+        ...glowShadow.cyanIntense,
+    },
     content: {
-        maxHeight: 500,
+        flex: 1,
+        padding: spacing.xl,
     },
     header: {
         flexDirection: 'row',
@@ -156,6 +166,8 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xl,
         color: colors.electricCyan,
         letterSpacing: 2,
+        textShadowColor: colors.electricCyan,
+        textShadowRadius: 10,
     },
     closeButton: {
         width: 32,
@@ -168,10 +180,10 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xxl,
         color: colors.paleCyan,
     },
-    playerSection: {
-        marginBottom: spacing.lg,
+    infoSection: {
+        marginBottom: spacing.md,
     },
-    nameRow: {
+    infoRow: {
         flexDirection: 'row',
         marginBottom: spacing.xs,
     },
@@ -179,30 +191,31 @@ const styles = StyleSheet.create({
         fontFamily: 'Rajdhani-SemiBold',
         fontSize: fontSizes.md,
         color: colors.dimmed,
-        width: 120,
-        letterSpacing: 1,
+        width: 100,
     },
     value: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.md,
         color: colors.paleCyan,
-        letterSpacing: 1,
     },
-    rankProgress: {
+    goldText: {
+        color: colors.gold,
+    },
+    progressSection: {
         marginBottom: spacing.md,
     },
     progressText: {
         fontFamily: 'Rajdhani-SemiBold',
         fontSize: fontSizes.sm,
         color: colors.gold,
-        marginTop: spacing.xs,
         textAlign: 'center',
-        letterSpacing: 1,
+        marginTop: spacing.xs,
     },
     divider: {
         height: 1,
-        backgroundColor: colors.dimmed,
-        marginVertical: spacing.lg,
+        backgroundColor: colors.electricCyan,
+        opacity: 0.3,
+        marginVertical: spacing.md,
     },
     sectionTitle: {
         fontFamily: 'Rajdhani-Bold',
@@ -211,60 +224,35 @@ const styles = StyleSheet.create({
         letterSpacing: 2,
         marginBottom: spacing.md,
     },
-    attributeRow: {
-        marginBottom: spacing.lg,
+    statsGrid: {
+        gap: spacing.sm,
     },
-    attributeHeader: {
+    statRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing.sm,
     },
-    attributeIcon: {
-        width: 50,
-        height: 50,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: spacing.md,
-    },
-    attributeIconText: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.md,
-        letterSpacing: 1,
-    },
-    attributeInfo: {
+    xpBarContainer: {
         flex: 1,
+        marginLeft: spacing.md,
     },
-    attributeName: {
+    xpText: {
         fontFamily: 'Rajdhani-SemiBold',
-        fontSize: fontSizes.md,
-        color: colors.paleCyan,
-        letterSpacing: 1,
-    },
-    attributeLevel: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.lg,
-        color: colors.gold,
-    },
-    xpBar: {
-        marginLeft: 66,
+        fontSize: fontSizes.xs,
+        color: colors.dimmed,
+        marginTop: 2,
     },
     vitalsRow: {
         flexDirection: 'row',
         justifyContent: 'space-around',
     },
     vitalItem: {
+        flexDirection: 'row',
         alignItems: 'center',
     },
-    vitalLabel: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
+    vitalMax: {
+        fontFamily: 'Rajdhani-SemiBold',
+        fontSize: fontSizes.md,
         color: colors.dimmed,
-        letterSpacing: 1,
-    },
-    vitalValue: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.xl,
     },
 });
 

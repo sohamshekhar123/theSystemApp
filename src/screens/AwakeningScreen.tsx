@@ -1,45 +1,26 @@
-// The Awakening Screen - Cinematic intro sequence
+// The Awakening Screen - NOTIFICATION modal matching Solo Leveling reference
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Dimensions, TextInput, Animated, Text } from 'react-native';
-import { TypewriterText, GlowButton } from '../components';
+import { View, StyleSheet, StatusBar, Dimensions, TextInput, Animated, Text, TouchableOpacity } from 'react-native';
+import Svg, { Path, Line, Rect } from 'react-native-svg';
+import { TypewriterText } from '../components';
 import { useGame } from '../context/GameContext';
-import { colors, fontSizes, spacing } from '../styles/theme';
+import { colors, fontSizes, spacing, glowShadow } from '../styles/theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-type AwakeningStep = 'intro' | 'qualification' | 'choice' | 'rejection' | 'nameInput' | 'accepted';
+type AwakeningStep = 'intro' | 'qualification' | 'notification' | 'rejection' | 'nameInput';
 
 export const AwakeningScreen: React.FC = () => {
     const { dispatch } = useGame();
     const [step, setStep] = useState<AwakeningStep>('intro');
     const [playerName, setPlayerName] = useState('');
+    const [countdown, setCountdown] = useState(2);
 
-    const windowOpacity = useRef(new Animated.Value(0)).current;
-    const windowScale = useRef(new Animated.Value(0.9)).current;
-    const rejectionOpacity = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const modalScale = useRef(new Animated.Value(0.9)).current;
+    const modalOpacity = useRef(new Animated.Value(0)).current;
 
-    // Animate window appearance
-    useEffect(() => {
-        if (step === 'choice' || step === 'nameInput') {
-            Animated.parallel([
-                Animated.timing(windowOpacity, {
-                    toValue: 1,
-                    duration: 500,
-                    delay: 500,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(windowScale, {
-                    toValue: 1,
-                    duration: 500,
-                    delay: 500,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-        }
-    }, [step]);
-
-    // Fade in for intro steps
+    // Fade animation for each step
     useEffect(() => {
         fadeAnim.setValue(0);
         Animated.timing(fadeAnim, {
@@ -49,34 +30,35 @@ export const AwakeningScreen: React.FC = () => {
         }).start();
     }, [step]);
 
-    const handleIntroComplete = () => {
-        setStep('qualification');
-    };
+    // Modal animation
+    useEffect(() => {
+        if (step === 'notification' || step === 'nameInput') {
+            Animated.parallel([
+                Animated.spring(modalScale, { toValue: 1, useNativeDriver: true, tension: 100, friction: 10 }),
+                Animated.timing(modalOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+            ]).start();
+        }
+    }, [step]);
 
-    const handleQualificationComplete = () => {
-        setStep('choice');
-    };
+    // Countdown timer for rejection
+    useEffect(() => {
+        if (step === 'rejection' && countdown > 0) {
+            const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+            return () => clearTimeout(timer);
+        } else if (step === 'rejection' && countdown === 0) {
+            setStep('notification');
+            setCountdown(2);
+        }
+    }, [step, countdown]);
 
-    const handleAccept = () => {
-        setStep('nameInput');
-    };
+    const handleIntroComplete = () => setStep('qualification');
+    const handleQualificationComplete = () => setStep('notification');
+
+    const handleAccept = () => setStep('nameInput');
 
     const handleReject = () => {
         setStep('rejection');
-        Animated.timing(rejectionOpacity, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-        }).start();
-
-        // After fake death warning, force accept
-        setTimeout(() => {
-            Animated.timing(rejectionOpacity, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            }).start(() => setStep('choice'));
-        }, 2000);
+        setCountdown(2);
     };
 
     const handleNameSubmit = () => {
@@ -86,16 +68,84 @@ export const AwakeningScreen: React.FC = () => {
         }
     };
 
+    // Modal dimensions
+    const modalWidth = SCREEN_WIDTH * 0.88;
+    const modalHeight = 280;
+    const cs = 12; // Corner size
+
+    const framePath = `M ${cs} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${cs} Z`;
+
+    const corners = [
+        `M 0 ${cs + 8} L 0 ${cs} L ${cs} 0 L ${cs + 8} 0`,
+        `M ${modalWidth - cs - 8} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${cs + 8}`,
+        `M ${modalWidth} ${modalHeight - cs - 8} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${modalWidth - cs - 8} ${modalHeight}`,
+        `M ${cs + 8} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${modalHeight - cs - 8}`,
+    ];
+
+    const renderModal = (title: string, content: React.ReactNode) => (
+        <Animated.View style={[
+            styles.modalContainer,
+            { width: modalWidth, height: modalHeight, opacity: modalOpacity, transform: [{ scale: modalScale }] }
+        ]}>
+            <Svg width={modalWidth} height={modalHeight} style={StyleSheet.absoluteFill}>
+                {/* Background */}
+                <Path d={framePath} fill={colors.voidBlack} fillOpacity={0.98} />
+
+                {/* Scanlines */}
+                {Array.from({ length: Math.floor(modalHeight / 4) }).map((_, i) => (
+                    <Line key={i} x1={cs} y1={i * 4} x2={modalWidth - cs} y2={i * 4} stroke={colors.electricCyan} strokeOpacity={0.03} strokeWidth={1} />
+                ))}
+
+                {/* Frame border */}
+                <Path d={framePath} fill="none" stroke={colors.electricCyan} strokeWidth={1.5} />
+
+                {/* Inner decorative lines */}
+                <Line x1={8} y1={8} x2={modalWidth - 8} y2={8} stroke={colors.electricCyan} strokeWidth={0.5} strokeOpacity={0.4} />
+                <Line x1={8} y1={modalHeight - 8} x2={modalWidth - 8} y2={modalHeight - 8} stroke={colors.electricCyan} strokeWidth={0.5} strokeOpacity={0.4} />
+
+                {/* Corner accents */}
+                {corners.map((path, i) => (
+                    <Path key={i} d={path} fill="none" stroke={colors.electricCyan} strokeWidth={2} />
+                ))}
+            </Svg>
+
+            <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>! {title}</Text>
+                {content}
+            </View>
+        </Animated.View>
+    );
+
+    const renderButton = (label: string, onPress: () => void, variant: 'primary' | 'secondary' = 'primary') => {
+        const btnWidth = 100;
+        const btnHeight = 40;
+        return (
+            <TouchableOpacity onPress={onPress} style={[styles.button, { width: btnWidth, height: btnHeight }]}>
+                <Svg width={btnWidth} height={btnHeight} style={StyleSheet.absoluteFill}>
+                    <Rect x={0} y={0} width={btnWidth} height={btnHeight} fill="none" stroke={colors.electricCyan} strokeWidth={1} />
+                </Svg>
+                <Text style={styles.buttonText}>{label}</Text>
+            </TouchableOpacity>
+        );
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor={colors.voidBlack} />
+
+            {/* Background scanlines */}
+            <View style={styles.scanlinesBg}>
+                {Array.from({ length: Math.floor(SCREEN_HEIGHT / 3) }).map((_, i) => (
+                    <View key={i} style={styles.bgScanline} />
+                ))}
+            </View>
 
             {/* Intro text */}
             {step === 'intro' && (
                 <Animated.View style={[styles.textContainer, { opacity: fadeAnim }]}>
                     <TypewriterText
                         text="..."
-                        speed={300}
+                        speed={400}
                         delay={1000}
                         onComplete={handleIntroComplete}
                         style={styles.introText}
@@ -108,78 +158,55 @@ export const AwakeningScreen: React.FC = () => {
                 <Animated.View style={[styles.textContainer, { opacity: fadeAnim }]}>
                     <TypewriterText
                         text="YOU HAVE QUALIFIED TO BECOME A PLAYER."
-                        speed={60}
-                        delay={500}
+                        speed={50}
+                        delay={300}
                         onComplete={handleQualificationComplete}
                         style={styles.qualificationText}
                     />
                 </Animated.View>
             )}
 
-            {/* Choice window */}
-            {step === 'choice' && (
-                <Animated.View style={[
-                    styles.windowContainer,
-                    { opacity: windowOpacity, transform: [{ scale: windowScale }] }
-                ]}>
-                    <View style={styles.systemWindow}>
-                        <Text style={styles.choiceText}>WILL YOU ACCEPT?</Text>
-                        <View style={styles.buttonRow}>
-                            <GlowButton
-                                title="YES"
-                                onPress={handleAccept}
-                                variant="primary"
-                                pulsing
-                                style={styles.choiceButton}
-                            />
-                            <GlowButton
-                                title="NO"
-                                onPress={handleReject}
-                                variant="danger"
-                                style={styles.choiceButton}
-                            />
-                        </View>
+            {/* NOTIFICATION modal - matches reference image */}
+            {step === 'notification' && renderModal('NOTIFICATION', (
+                <>
+                    <Text style={styles.modalText}>You are qualified to be a Player.</Text>
+                    <Text style={styles.modalTextRed}>Your heart will stop in 0:02 seconds.</Text>
+                    <Text style={styles.modalText}>Will you accept?</Text>
+                    <View style={styles.buttonRow}>
+                        {renderButton('YES', handleAccept)}
+                        {renderButton('NO', handleReject)}
                     </View>
-                </Animated.View>
-            )}
+                </>
+            ))}
 
-            {/* Rejection warning */}
+            {/* Rejection countdown */}
             {step === 'rejection' && (
-                <Animated.View style={[styles.rejectionContainer, { opacity: rejectionOpacity }]}>
+                <View style={styles.rejectionContainer}>
                     <Text style={styles.rejectionText}>
-                        HEART WILL STOP IN 0.02 SECONDS.
+                        YOUR HEART WILL STOP IN 0:0{countdown} SECONDS.
                     </Text>
-                </Animated.View>
+                </View>
             )}
 
-            {/* Name input */}
-            {step === 'nameInput' && (
-                <Animated.View style={[
-                    styles.windowContainer,
-                    { opacity: fadeAnim }
-                ]}>
-                    <View style={styles.systemWindow}>
-                        <Text style={styles.choiceText}>ENTER YOUR NAME, PLAYER.</Text>
-                        <TextInput
-                            style={styles.nameInput}
-                            value={playerName}
-                            onChangeText={setPlayerName}
-                            placeholder="ENTER NAME"
-                            placeholderTextColor={colors.dimmed}
-                            autoCapitalize="characters"
-                            autoCorrect={false}
-                            maxLength={20}
-                        />
-                        <GlowButton
-                            title="ACCEPT"
-                            onPress={handleNameSubmit}
-                            variant="primary"
-                            pulsing
-                            disabled={!playerName.trim()}
-                        />
+            {/* Name input modal */}
+            {step === 'nameInput' && renderModal('PLAYER REGISTRATION', (
+                <>
+                    <Text style={styles.modalText}>Enter your name, Player.</Text>
+                    <TextInput
+                        style={styles.nameInput}
+                        value={playerName}
+                        onChangeText={setPlayerName}
+                        placeholder="ENTER NAME"
+                        placeholderTextColor={colors.dimmed}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        maxLength={20}
+                    />
+                    <View style={styles.buttonRow}>
+                        {renderButton('ACCEPT', handleNameSubmit)}
                     </View>
-                </Animated.View>
-            )}
+                </>
+            ))}
         </View>
     );
 };
@@ -191,6 +218,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    scanlinesBg: {
+        ...StyleSheet.absoluteFillObject,
+        opacity: 0.4,
+    },
+    bgScanline: {
+        height: 1,
+        backgroundColor: colors.electricCyan,
+        opacity: 0.03,
+        marginBottom: 2,
+    },
     textContainer: {
         paddingHorizontal: spacing.xl,
         alignItems: 'center',
@@ -200,6 +237,9 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xxxl,
         color: colors.electricCyan,
         textAlign: 'center',
+        textShadowColor: colors.electricCyan,
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 20,
     },
     qualificationText: {
         fontFamily: 'Rajdhani-Bold',
@@ -208,44 +248,61 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: fontSizes.xl * 1.5,
     },
-    windowContainer: {
-        padding: spacing.lg,
+    modalContainer: {
+        ...glowShadow.cyanIntense,
     },
-    systemWindow: {
-        backgroundColor: 'rgba(5, 5, 5, 0.95)',
-        borderWidth: 1,
-        borderColor: colors.electricCyan,
+    modalContent: {
+        flex: 1,
         padding: spacing.xl,
         alignItems: 'center',
-        shadowColor: colors.electricCyan,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 20,
-        elevation: 10,
-        minWidth: SCREEN_WIDTH * 0.8,
+        justifyContent: 'center',
     },
-    choiceText: {
+    modalTitle: {
         fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.xl,
+        fontSize: fontSizes.lg,
+        color: colors.electricCyan,
+        letterSpacing: 2,
+        marginBottom: spacing.lg,
+        textShadowColor: colors.electricCyan,
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10,
+    },
+    modalText: {
+        fontFamily: 'Rajdhani-SemiBold',
+        fontSize: fontSizes.md,
         color: colors.paleCyan,
         textAlign: 'center',
-        marginBottom: spacing.xl,
-        letterSpacing: 2,
+        marginBottom: spacing.sm,
+    },
+    modalTextRed: {
+        fontFamily: 'Rajdhani-Bold',
+        fontSize: fontSizes.md,
+        color: colors.alertRed,
+        textAlign: 'center',
+        marginBottom: spacing.sm,
+        textShadowColor: colors.alertRed,
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 8,
     },
     buttonRow: {
         flexDirection: 'row',
         gap: spacing.lg,
+        marginTop: spacing.lg,
     },
-    choiceButton: {
-        minWidth: 100,
+    button: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...glowShadow.cyan,
+    },
+    buttonText: {
+        fontFamily: 'Rajdhani-Bold',
+        fontSize: fontSizes.md,
+        color: colors.paleCyan,
+        letterSpacing: 2,
     },
     rejectionContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(255, 51, 51, 0.2)',
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255, 51, 51, 0.15)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -255,7 +312,9 @@ const styles = StyleSheet.create({
         color: colors.alertRed,
         textAlign: 'center',
         letterSpacing: 2,
-        textTransform: 'uppercase',
+        textShadowColor: colors.alertRed,
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 15,
     },
     nameInput: {
         width: '100%',
@@ -266,7 +325,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.lg,
         padding: spacing.md,
-        marginBottom: spacing.lg,
+        marginVertical: spacing.md,
         textAlign: 'center',
         letterSpacing: 2,
     },

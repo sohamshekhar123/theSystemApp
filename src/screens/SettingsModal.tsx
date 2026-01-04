@@ -1,10 +1,11 @@
-// Settings Modal - User configuration
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, TextInput, Alert } from 'react-native';
-import { SystemWindow, GlowButton } from '../components';
+// Settings Modal - Solo Leveling style
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Animated, Dimensions } from 'react-native';
+import Svg, { Path, Line } from 'react-native-svg';
 import { useGame } from '../context/GameContext';
-import storage from '../storage/storage';
-import { colors, fontSizes, spacing, touchTarget } from '../styles/theme';
+import { colors, fontSizes, spacing, glowShadow, touchTarget } from '../styles/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface SettingsModalProps {
     visible: boolean;
@@ -13,177 +14,120 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     const { state, dispatch } = useGame();
-    const [penaltyInput, setPenaltyInput] = useState(state.penaltyTask?.title || '');
-    const [showPenaltyForm, setShowPenaltyForm] = useState(false);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const [hapticsEnabled, setHapticsEnabled] = useState(true);
 
-    const handleTogglePenalty = (value: boolean) => {
-        dispatch({ type: 'UPDATE_SETTINGS', payload: { penaltyEnabled: value } });
-    };
+    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
 
-    const handleToggleSound = (value: boolean) => {
-        dispatch({ type: 'UPDATE_SETTINGS', payload: { soundEnabled: value } });
-    };
+    const modalWidth = SCREEN_WIDTH * 0.92;
+    const modalHeight = 400;
+    const cs = 15;
 
-    const handleToggleHaptic = (value: boolean) => {
-        dispatch({ type: 'UPDATE_SETTINGS', payload: { hapticEnabled: value } });
-    };
-
-    const handleSavePenalty = () => {
-        if (penaltyInput.trim()) {
-            dispatch({
-                type: 'SET_PENALTY_TASK',
-                payload: {
-                    id: Date.now().toString(),
-                    title: penaltyInput.trim().toUpperCase(),
-                    description: '',
-                },
-            });
-            setShowPenaltyForm(false);
+    useEffect(() => {
+        if (visible) {
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 100, friction: 10 }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            ]).start();
+        } else {
+            scaleAnim.setValue(0.9);
+            opacityAnim.setValue(0);
         }
-    };
+    }, [visible]);
 
-    const handleResetData = () => {
+    if (!visible) return null;
+
+    const handleReset = () => {
         Alert.alert(
-            'RESET ALL DATA',
-            'THIS WILL DELETE ALL YOUR PROGRESS. THIS ACTION CANNOT BE UNDONE.',
+            'RESET DATA',
+            'This will erase all progress. Are you sure?',
             [
                 { text: 'CANCEL', style: 'cancel' },
-                {
-                    text: 'RESET',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await storage.resetAllData();
-                        dispatch({ type: 'RESET_ALL' });
-                        onClose();
-                    },
-                },
+                { text: 'RESET', style: 'destructive', onPress: () => dispatch({ type: 'RESET_ALL' }) }
             ]
         );
     };
 
+    const framePath = `M ${cs} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${cs} Z`;
+    const corners = [
+        `M 0 ${cs + 10} L 0 ${cs} L ${cs} 0 L ${cs + 10} 0`,
+        `M ${modalWidth - cs - 10} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${cs + 10}`,
+        `M ${modalWidth} ${modalHeight - cs - 10} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${modalWidth - cs - 10} ${modalHeight}`,
+        `M ${cs + 10} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${modalHeight - cs - 10}`,
+    ];
+
     return (
-        <SystemWindow visible={visible} onClose={onClose}>
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>SETTINGS</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Text style={styles.closeText}>×</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={styles.overlay}>
+            <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
 
-                {/* Penalty Settings */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>THE PENALTY</Text>
+            <Animated.View style={[
+                styles.modalContainer,
+                { width: modalWidth, height: modalHeight, opacity: opacityAnim, transform: [{ scale: scaleAnim }] }
+            ]}>
+                <Svg width={modalWidth} height={modalHeight} style={StyleSheet.absoluteFill}>
+                    <Path d={framePath} fill={colors.voidBlack} fillOpacity={0.98} />
+                    <Path d={framePath} fill="none" stroke={colors.electricCyan} strokeWidth={1.5} />
+                    {corners.map((path, i) => (
+                        <Path key={i} d={path} fill="none" stroke={colors.electricCyan} strokeWidth={2.5} />
+                    ))}
+                </Svg>
 
-                    <View style={styles.settingRow}>
-                        <View style={styles.settingInfo}>
-                            <Text style={styles.settingLabel}>PENALTY ENABLED</Text>
-                            <Text style={styles.settingDesc}>
-                                Activate penalty for incomplete daily quests
-                            </Text>
-                        </View>
-                        <Switch
-                            value={state.settings.penaltyEnabled}
-                            onValueChange={handleTogglePenalty}
-                            trackColor={{ false: colors.dimmed, true: colors.alertRed }}
-                            thumbColor={colors.paleCyan}
-                        />
+                <View style={styles.content}>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>SETTINGS</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <Text style={styles.closeText}>×</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    <View style={styles.penaltyTaskSection}>
-                        <Text style={styles.settingLabel}>PENALTY TASK:</Text>
-                        {state.penaltyTask ? (
-                            <View style={styles.penaltyDisplay}>
-                                <Text style={styles.penaltyText}>{state.penaltyTask.title}</Text>
-                                <TouchableOpacity onPress={() => setShowPenaltyForm(true)}>
-                                    <Text style={styles.editText}>EDIT</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : showPenaltyForm ? (
-                            <View style={styles.penaltyForm}>
-                                <TextInput
-                                    style={styles.penaltyInput}
-                                    value={penaltyInput}
-                                    onChangeText={setPenaltyInput}
-                                    placeholder="E.G. RUN 5KM"
-                                    placeholderTextColor={colors.dimmed}
-                                    autoCapitalize="characters"
-                                />
-                                <View style={styles.formButtons}>
-                                    <GlowButton title="SAVE" onPress={handleSavePenalty} size="small" />
-                                    <GlowButton
-                                        title="CANCEL"
-                                        onPress={() => setShowPenaltyForm(false)}
-                                        variant="danger"
-                                        size="small"
-                                    />
-                                </View>
-                            </View>
-                        ) : (
-                            <TouchableOpacity
-                                style={styles.setPenaltyButton}
-                                onPress={() => setShowPenaltyForm(true)}
-                            >
-                                <Text style={styles.setPenaltyText}>+ SET PENALTY TASK</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                {/* Audio/Haptic Settings */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>FEEDBACK</Text>
-
-                    <View style={styles.settingRow}>
-                        <View style={styles.settingInfo}>
+                    <ScrollView>
+                        <View style={styles.settingRow}>
                             <Text style={styles.settingLabel}>SOUND EFFECTS</Text>
+                            <Switch
+                                value={soundEnabled}
+                                onValueChange={setSoundEnabled}
+                                trackColor={{ false: colors.dimmed, true: colors.electricCyan }}
+                                thumbColor={colors.paleCyan}
+                            />
                         </View>
-                        <Switch
-                            value={state.settings.soundEnabled}
-                            onValueChange={handleToggleSound}
-                            trackColor={{ false: colors.dimmed, true: colors.electricCyan }}
-                            thumbColor={colors.paleCyan}
-                        />
-                    </View>
 
-                    <View style={styles.settingRow}>
-                        <View style={styles.settingInfo}>
+                        <View style={styles.settingRow}>
                             <Text style={styles.settingLabel}>HAPTIC FEEDBACK</Text>
+                            <Switch
+                                value={hapticsEnabled}
+                                onValueChange={setHapticsEnabled}
+                                trackColor={{ false: colors.dimmed, true: colors.electricCyan }}
+                                thumbColor={colors.paleCyan}
+                            />
                         </View>
-                        <Switch
-                            value={state.settings.hapticEnabled}
-                            onValueChange={handleToggleHaptic}
-                            trackColor={{ false: colors.dimmed, true: colors.electricCyan }}
-                            thumbColor={colors.paleCyan}
-                        />
-                    </View>
+
+                        <View style={styles.divider} />
+
+                        <TouchableOpacity style={styles.dangerButton} onPress={handleReset}>
+                            <Text style={styles.dangerButtonText}>RESET ALL DATA</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
                 </View>
-
-                <View style={styles.divider} />
-
-                {/* Danger Zone */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.alertRed }]}>DANGER ZONE</Text>
-                    <GlowButton
-                        title="RESET ALL DATA"
-                        onPress={handleResetData}
-                        variant="danger"
-                    />
-                </View>
-
-                {/* Version */}
-                <Text style={styles.version}>VERSION 1.0.0</Text>
-            </View>
-        </SystemWindow>
+            </Animated.View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(2, 2, 10, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContainer: {
+        ...glowShadow.cyanIntense,
+    },
     content: {
-        minWidth: 300,
+        flex: 1,
+        padding: spacing.lg,
     },
     header: {
         flexDirection: 'row',
@@ -196,6 +140,8 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xl,
         color: colors.electricCyan,
         letterSpacing: 2,
+        textShadowColor: colors.electricCyan,
+        textShadowRadius: 10,
     },
     closeButton: {
         width: 32,
@@ -208,26 +154,14 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xxl,
         color: colors.paleCyan,
     },
-    section: {
-        marginBottom: spacing.md,
-    },
-    sectionTitle: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.md,
-        color: colors.electricCyan,
-        letterSpacing: 2,
-        marginBottom: spacing.md,
-    },
     settingRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.dimmed,
         minHeight: touchTarget.minHeight,
-    },
-    settingInfo: {
-        flex: 1,
-        marginRight: spacing.md,
     },
     settingLabel: {
         fontFamily: 'Rajdhani-SemiBold',
@@ -235,83 +169,21 @@ const styles = StyleSheet.create({
         color: colors.paleCyan,
         letterSpacing: 1,
     },
-    settingDesc: {
-        fontFamily: 'Rajdhani-Regular',
-        fontSize: fontSizes.sm,
-        color: colors.dimmed,
-        marginTop: 2,
+    divider: {
+        height: spacing.xl,
     },
-    penaltyTaskSection: {
-        marginTop: spacing.sm,
-    },
-    penaltyDisplay: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: spacing.sm,
+    dangerButton: {
         borderWidth: 1,
         borderColor: colors.alertRed,
-        marginTop: spacing.xs,
-    },
-    penaltyText: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.md,
-        color: colors.alertRed,
-        letterSpacing: 1,
-    },
-    editText: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
-        color: colors.electricCyan,
-        letterSpacing: 1,
-    },
-    penaltyForm: {
-        marginTop: spacing.sm,
-    },
-    penaltyInput: {
-        borderWidth: 1,
-        borderColor: colors.dimmed,
-        backgroundColor: 'transparent',
-        color: colors.paleCyan,
-        fontFamily: 'Rajdhani-SemiBold',
-        fontSize: fontSizes.md,
-        padding: spacing.sm,
-        marginBottom: spacing.sm,
-        letterSpacing: 1,
-    },
-    formButtons: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: spacing.sm,
-    },
-    setPenaltyButton: {
-        borderWidth: 1,
-        borderColor: colors.alertRed,
-        borderStyle: 'dashed',
         padding: spacing.md,
         alignItems: 'center',
-        marginTop: spacing.xs,
         minHeight: touchTarget.minHeight,
-        justifyContent: 'center',
     },
-    setPenaltyText: {
+    dangerButtonText: {
         fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
+        fontSize: fontSizes.md,
         color: colors.alertRed,
         letterSpacing: 2,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: colors.dimmed,
-        marginVertical: spacing.md,
-    },
-    version: {
-        fontFamily: 'Rajdhani-Regular',
-        fontSize: fontSizes.xs,
-        color: colors.dimmed,
-        textAlign: 'center',
-        marginTop: spacing.lg,
-        letterSpacing: 1,
     },
 });
 

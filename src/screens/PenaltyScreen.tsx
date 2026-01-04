@@ -1,9 +1,11 @@
-// Penalty Screen - Full screen lockout when daily quests miss deadline
+// Penalty Screen - Solo Leveling danger style
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, StatusBar, Animated } from 'react-native';
-import { GlowButton } from '../components';
+import { View, Text, StyleSheet, StatusBar, Animated, Dimensions, TouchableOpacity } from 'react-native';
+import Svg, { Path, Line } from 'react-native-svg';
 import { useGame } from '../context/GameContext';
-import { colors, fontSizes, spacing } from '../styles/theme';
+import { colors, fontSizes, spacing, glowShadow } from '../styles/theme';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface PenaltyScreenProps {
     onComplete: () => void;
@@ -11,111 +13,72 @@ interface PenaltyScreenProps {
 
 export const PenaltyScreen: React.FC<PenaltyScreenProps> = ({ onComplete }) => {
     const { state } = useGame();
-    const warningOpacity = useRef(new Animated.Value(1)).current;
-    const borderGlow = useRef(new Animated.Value(0.3)).current;
+    const pulseAnim = useRef(new Animated.Value(0.8)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
-    // Warning pulse
+    const frameWidth = SCREEN_WIDTH - 48;
+    const frameHeight = 250;
+    const cs = 15;
+
     useEffect(() => {
-        const warningAnimation = Animated.loop(
+        Animated.loop(
             Animated.sequence([
-                Animated.timing(warningOpacity, {
-                    toValue: 0.5,
-                    duration: 500,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(warningOpacity, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: true,
-                }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 0.8, duration: 500, useNativeDriver: true }),
             ])
-        );
+        ).start();
 
-        const glowAnimation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(borderGlow, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(borderGlow, {
-                    toValue: 0.3,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        warningAnimation.start();
-        glowAnimation.start();
-
-        // Staggered fade in
-        Animated.stagger(500, [
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        return () => {
-            warningAnimation.stop();
-            glowAnimation.stop();
-        };
+        Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
     }, []);
+
+    const framePath = `M ${cs} 0 L ${frameWidth - cs} 0 L ${frameWidth} ${cs} L ${frameWidth} ${frameHeight - cs} L ${frameWidth - cs} ${frameHeight} L ${cs} ${frameHeight} L 0 ${frameHeight - cs} L 0 ${cs} Z`;
+    const corners = [
+        `M 0 ${cs + 10} L 0 ${cs} L ${cs} 0 L ${cs + 10} 0`,
+        `M ${frameWidth - cs - 10} 0 L ${frameWidth - cs} 0 L ${frameWidth} ${cs} L ${frameWidth} ${cs + 10}`,
+        `M ${frameWidth} ${frameHeight - cs - 10} L ${frameWidth} ${frameHeight - cs} L ${frameWidth - cs} ${frameHeight} L ${frameWidth - cs - 10} ${frameHeight}`,
+        `M ${cs + 10} ${frameHeight} L ${cs} ${frameHeight} L 0 ${frameHeight - cs} L 0 ${frameHeight - cs - 10}`,
+    ];
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor={colors.voidBlack} />
 
+            {/* Red danger overlay */}
+            <Animated.View style={[styles.dangerOverlay, { opacity: pulseAnim }]} />
+
             {/* Warning Header */}
-            <Animated.View style={[styles.warningHeader, { opacity: warningOpacity }]}>
+            <Animated.View style={[styles.warningHeader, { opacity: fadeAnim }]}>
                 <Text style={styles.warningIcon}>⚠</Text>
                 <Text style={styles.warningTitle}>PENALTY ZONE</Text>
             </Animated.View>
 
-            {/* System Message */}
-            <Animated.View style={[styles.messageBox, { opacity: fadeAnim }]}>
-                <Text style={styles.systemLabel}>[SYSTEM ALERT]</Text>
-                <Text style={styles.systemMessage}>
-                    DAILY QUEST FAILURE DETECTED.
-                </Text>
-                <Text style={styles.systemMessage}>
-                    PENALTY PROTOCOL INITIATED.
-                </Text>
-            </Animated.View>
+            {/* Penalty Frame */}
+            <Animated.View style={[styles.penaltyFrame, { width: frameWidth, height: frameHeight, opacity: fadeAnim }]}>
+                <Svg width={frameWidth} height={frameHeight} style={StyleSheet.absoluteFill}>
+                    <Path d={framePath} fill={colors.voidBlack} fillOpacity={0.95} />
+                    <Path d={framePath} fill="none" stroke={colors.alertRed} strokeWidth={2} />
+                    {corners.map((path, i) => (
+                        <Path key={i} d={path} fill="none" stroke={colors.alertRed} strokeWidth={3} />
+                    ))}
+                </Svg>
 
-            {/* Penalty Task */}
-            <Animated.View style={[styles.penaltyBox, { opacity: fadeAnim }]}>
-                <Text style={styles.penaltyLabel}>PENALTY TASK:</Text>
-                <Text style={styles.penaltyTask}>
-                    {state.penaltyTask?.title || 'NO PENALTY SET'}
-                </Text>
-                <Text style={styles.penaltyDescription}>
-                    {state.penaltyTask?.description || 'COMPLETE THE TASK TO RESTORE ACCESS.'}
-                </Text>
-            </Animated.View>
-
-            {/* Stats Damage */}
-            <Animated.View style={[styles.damageBox, { opacity: fadeAnim }]}>
-                <Text style={styles.damageLabel}>PENALTY EFFECT:</Text>
-                <Text style={styles.damageText}>HP -20</Text>
+                <View style={styles.frameContent}>
+                    <Text style={styles.penaltyLabel}>PENALTY TASK:</Text>
+                    <Text style={styles.penaltyTask}>{state.penaltyTask?.title || 'NO PENALTY SET'}</Text>
+                    <Text style={styles.penaltyDescription}>{state.penaltyTask?.description || 'COMPLETE TO RESTORE ACCESS'}</Text>
+                    <Text style={styles.damageText}>HP -20</Text>
+                </View>
             </Animated.View>
 
             {/* Survive Button */}
-            <Animated.View style={[styles.surviveContainer, { opacity: fadeAnim }]}>
-                <GlowButton
-                    title="SURVIVE"
-                    onPress={onComplete}
-                    variant="danger"
-                    size="large"
-                    pulsing
-                    style={styles.surviveButton}
-                />
-                <Text style={styles.surviveSubtext}>
-                    MARK PENALTY AS COMPLETE TO CONTINUE.
-                </Text>
+            <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim }]}>
+                <TouchableOpacity style={styles.surviveButton} onPress={onComplete}>
+                    <Svg width={200} height={50} style={StyleSheet.absoluteFill}>
+                        <Path d="M 10 0 L 190 0 L 200 10 L 200 40 L 190 50 L 10 50 L 0 40 L 0 10 Z" fill="none" stroke={colors.alertRed} strokeWidth={2} />
+                    </Svg>
+                    <Text style={styles.surviveText}>SURVIVE</Text>
+                </TouchableOpacity>
+                <Text style={styles.surviveSubtext}>MARK PENALTY AS COMPLETE TO CONTINUE</Text>
             </Animated.View>
         </View>
     );
@@ -128,55 +91,36 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: spacing.xl,
-        borderWidth: 4,
-        borderColor: colors.alertRed,
-        shadowColor: colors.alertRed,
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 30,
-        elevation: 20,
+    },
+    dangerOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255, 51, 51, 0.1)',
     },
     warningHeader: {
         alignItems: 'center',
         marginBottom: spacing.xl,
     },
     warningIcon: {
-        fontSize: 60,
-        marginBottom: spacing.md,
+        fontSize: 50,
+        marginBottom: spacing.sm,
     },
     warningTitle: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.xxxl,
         color: colors.alertRed,
         letterSpacing: 4,
-        textTransform: 'uppercase',
+        textShadowColor: colors.alertRed,
+        textShadowRadius: 20,
     },
-    messageBox: {
-        alignItems: 'center',
+    penaltyFrame: {
+        ...glowShadow.red,
         marginBottom: spacing.xl,
     },
-    systemLabel: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
-        color: colors.electricCyan,
-        letterSpacing: 2,
-        marginBottom: spacing.sm,
-    },
-    systemMessage: {
-        fontFamily: 'Rajdhani-SemiBold',
-        fontSize: fontSizes.lg,
-        color: colors.paleCyan,
-        letterSpacing: 1,
-        textAlign: 'center',
-        marginBottom: spacing.xs,
-    },
-    penaltyBox: {
-        width: '100%',
-        borderWidth: 2,
-        borderColor: colors.alertRed,
+    frameContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
         padding: spacing.lg,
-        alignItems: 'center',
-        marginBottom: spacing.xl,
-        backgroundColor: 'rgba(255, 51, 51, 0.1)',
     },
     penaltyLabel: {
         fontFamily: 'Rajdhani-Bold',
@@ -187,49 +131,46 @@ const styles = StyleSheet.create({
     },
     penaltyTask: {
         fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.xxl,
+        fontSize: fontSizes.xl,
         color: colors.paleCyan,
-        letterSpacing: 2,
         textAlign: 'center',
-        marginBottom: spacing.sm,
+        marginBottom: spacing.xs,
     },
     penaltyDescription: {
         fontFamily: 'Rajdhani-Regular',
         fontSize: fontSizes.sm,
         color: colors.dimmed,
-        letterSpacing: 1,
         textAlign: 'center',
-    },
-    damageBox: {
-        alignItems: 'center',
-        marginBottom: spacing.xl,
-    },
-    damageLabel: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
-        color: colors.dimmed,
-        letterSpacing: 2,
-        marginBottom: spacing.xs,
+        marginBottom: spacing.md,
     },
     damageText: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.xl,
         color: colors.alertRed,
-        letterSpacing: 2,
+        textShadowColor: colors.alertRed,
+        textShadowRadius: 10,
     },
-    surviveContainer: {
+    buttonContainer: {
         alignItems: 'center',
     },
     surviveButton: {
-        minWidth: 200,
+        width: 200,
+        height: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...glowShadow.red,
+    },
+    surviveText: {
+        fontFamily: 'Rajdhani-Bold',
+        fontSize: fontSizes.lg,
+        color: colors.alertRed,
+        letterSpacing: 4,
     },
     surviveSubtext: {
         fontFamily: 'Rajdhani-Regular',
         fontSize: fontSizes.sm,
         color: colors.dimmed,
-        letterSpacing: 1,
         marginTop: spacing.md,
-        textAlign: 'center',
     },
 });
 

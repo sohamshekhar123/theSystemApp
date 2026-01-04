@@ -1,16 +1,16 @@
 // Global styles for Solo Leveling System App
 import { StyleSheet } from 'react-native';
-import { colors, fontSizes, spacing, touchTarget } from './theme';
+import { colors, fontSizes, spacing, touchTarget, glowShadow } from './theme';
 
 export const globalStyles = StyleSheet.create({
     // Containers
     container: {
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: colors.voidBlack,
     },
     centeredContainer: {
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: colors.voidBlack,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -19,36 +19,37 @@ export const globalStyles = StyleSheet.create({
     headerText: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.xl,
-        color: colors.text,
+        color: colors.paleCyan,
         textTransform: 'uppercase',
         letterSpacing: 2,
     },
     subHeaderText: {
         fontFamily: 'Rajdhani-SemiBold',
         fontSize: fontSizes.lg,
-        color: colors.text,
+        color: colors.paleCyan,
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
     bodyText: {
         fontFamily: 'Rajdhani-Regular',
         fontSize: fontSizes.md,
-        color: colors.text,
+        color: colors.paleCyan,
     },
     systemText: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.md,
-        color: colors.primary,
+        color: colors.electricCyan,
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
 
     // System window styles
     systemWindow: {
-        backgroundColor: colors.modalBackground,
+        backgroundColor: colors.voidBlack,
         borderWidth: 1,
-        borderColor: colors.primary,
+        borderColor: colors.electricCyan,
         padding: spacing.lg,
+        ...glowShadow.cyan,
     },
 
     // Button base
@@ -60,12 +61,12 @@ export const globalStyles = StyleSheet.create({
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.md,
         borderWidth: 1,
-        borderColor: colors.primary,
+        borderColor: colors.electricCyan,
     },
     buttonText: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.lg,
-        color: colors.primary,
+        color: colors.electricCyan,
         textTransform: 'uppercase',
         letterSpacing: 2,
     },
@@ -73,17 +74,18 @@ export const globalStyles = StyleSheet.create({
     // Modal
     modalOverlay: {
         flex: 1,
-        backgroundColor: colors.overlay,
+        backgroundColor: 'rgba(2, 2, 10, 0.9)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContent: {
-        backgroundColor: colors.modalBackground,
+        backgroundColor: colors.voidBlack,
         borderWidth: 1,
-        borderColor: colors.primary,
+        borderColor: colors.electricCyan,
         padding: spacing.lg,
         width: '90%',
         maxHeight: '80%',
+        ...glowShadow.cyan,
     },
 
     // List items
@@ -92,14 +94,14 @@ export const globalStyles = StyleSheet.create({
         alignItems: 'center',
         padding: spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: colors.muted,
+        borderBottomColor: colors.dimmed,
         minHeight: touchTarget.minHeight,
     },
 
     // Progress bars
     progressBarContainer: {
         height: 16,
-        backgroundColor: colors.muted,
+        backgroundColor: colors.dimmed,
         overflow: 'hidden',
     },
     progressBarFill: {
@@ -109,7 +111,7 @@ export const globalStyles = StyleSheet.create({
     // Divider
     divider: {
         height: 1,
-        backgroundColor: colors.muted,
+        backgroundColor: colors.dimmed,
         marginVertical: spacing.md,
     },
 });

@@ -1,118 +1,84 @@
-// Theme configuration for Solo Leveling System App
+// Solo Leveling "System" Theme
+// Exact color palette and style presets from the anime/manhwa
 
 export const colors = {
-    // Primary colors
-    voidBlack: '#050505',
+    // Core colors
+    voidBlack: '#02020A',
+    deepBlue: '#0A0A1A',
     electricCyan: '#00EAFF',
     paleCyan: '#E0F7FA',
+
+    // Accent colors  
     alertRed: '#FF3333',
     gold: '#FFD700',
-    dimmed: '#333333',
 
-    // Semantic colors
-    background: '#050505',
-    primary: '#00EAFF',
-    text: '#E0F7FA',
-    danger: '#FF3333',
-    success: '#00FF88',
-    warning: '#FFD700',
-    muted: '#333333',
-
-    // Bars
-    hpBar: '#FF3333',
-    mpBar: '#00EAFF',
-    xpBar: '#00FF88',
-
-    // Translucent
-    modalBackground: 'rgba(0, 0, 0, 0.9)',
-    overlay: 'rgba(0, 0, 0, 0.7)',
-};
-
-export const fonts = {
-    primary: 'Rajdhani',
-    fallback: 'System',
-};
-
-export const fontWeights = {
-    regular: '400' as const,
-    medium: '500' as const,
-    semiBold: '600' as const,
-    bold: '700' as const,
+    // UI colors
+    dimmed: '#4A5568',
+    darkPanel: 'rgba(0, 234, 255, 0.05)',
+    glowOverlay: 'rgba(0, 234, 255, 0.1)',
 };
 
 export const fontSizes = {
-    xs: 12,
-    sm: 14,
-    md: 16,
-    lg: 20,
-    xl: 24,
-    xxl: 32,
-    xxxl: 48,
-    display: 64,
+    xs: 10,
+    sm: 12,
+    md: 14,
+    lg: 18,
+    xl: 22,
+    xxl: 28,
+    xxxl: 36,
 };
 
 export const spacing = {
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    xxl: 32,
 };
 
-export const borderRadius = {
-    none: 0,
-    sm: 2,
-    md: 4,
-    lg: 8,
-};
-
-export const shadows = {
-    glow: {
-        shadowColor: '#00EAFF',
+// Glow shadow presets for the Solo Leveling style
+export const glowShadow = {
+    cyan: {
+        shadowColor: colors.electricCyan,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
-        shadowRadius: 10,
+        shadowRadius: 15,
         elevation: 10,
     },
-    glowRed: {
-        shadowColor: '#FF3333',
+    cyanIntense: {
+        shadowColor: colors.electricCyan,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 25,
+        elevation: 15,
+    },
+    red: {
+        shadowColor: colors.alertRed,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
-        shadowRadius: 10,
+        shadowRadius: 15,
         elevation: 10,
     },
-    glowGold: {
-        shadowColor: '#FFD700',
+    gold: {
+        shadowColor: colors.gold,
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
+        shadowOpacity: 0.6,
         shadowRadius: 10,
-        elevation: 10,
+        elevation: 8,
     },
 };
 
-export const glowStyles = {
-    cyan: `0 0 10px ${colors.electricCyan}`,
-    red: `0 0 10px ${colors.alertRed}`,
-    gold: `0 0 10px ${colors.gold}`,
-};
-
-// Touch target minimum size (accessibility)
+// Touch target sizes for accessibility
 export const touchTarget = {
     minHeight: 44,
     minWidth: 44,
 };
 
-export const theme = {
+export default {
     colors,
-    fonts,
-    fontWeights,
     fontSizes,
     spacing,
-    borderRadius,
-    shadows,
-    glowStyles,
+    glowShadow,
     touchTarget,
 };
-
-export default theme;

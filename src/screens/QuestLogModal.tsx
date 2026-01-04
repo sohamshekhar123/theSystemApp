@@ -1,37 +1,45 @@
-// Quest Log Modal - Daily Quests and Boss Raids
+// Quest Log Modal - Daily Quests with Solo Leveling angular panels
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Animated } from 'react-native';
-import { SystemWindow, QuestItem, ProgressBar, GlowButton } from '../components';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions } from 'react-native';
+import Svg, { Path, Line, Rect } from 'react-native-svg';
+import { QuestPanel, ProgressBar, GlowButton } from '../components';
 import { useGame } from '../context/GameContext';
-import { colors, fontSizes, spacing, touchTarget } from '../styles/theme';
+import { colors, fontSizes, spacing, glowShadow, touchTarget } from '../styles/theme';
 import { Attribute } from '../types';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface QuestLogModalProps {
     visible: boolean;
     onClose: () => void;
 }
 
-type TabType = 'daily' | 'boss';
-
 export const QuestLogModal: React.FC<QuestLogModalProps> = ({ visible, onClose }) => {
     const { state, dispatch } = useGame();
-    const [activeTab, setActiveTab] = useState<TabType>('daily');
     const [showAddQuest, setShowAddQuest] = useState(false);
     const [newQuestTitle, setNewQuestTitle] = useState('');
     const [newQuestAttribute, setNewQuestAttribute] = useState<Attribute['name']>('STR');
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    const modalWidth = SCREEN_WIDTH * 0.92;
+    const modalHeight = 550;
+    const cs = 15;
 
     useEffect(() => {
         if (visible) {
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }).start();
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 100, friction: 10 }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            ]).start();
         } else {
-            fadeAnim.setValue(0);
+            scaleAnim.setValue(0.9);
+            opacityAnim.setValue(0);
         }
     }, [visible]);
+
+    if (!visible) return null;
 
     const handleCompleteQuest = (questId: string) => {
         dispatch({ type: 'COMPLETE_DAILY_QUEST', payload: questId });
@@ -53,61 +61,55 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({ visible, onClose }
         }
     };
 
-    const handleCompleteBossSubQuest = (bossId: string, subQuestId: string) => {
-        dispatch({
-            type: 'COMPLETE_SUB_QUEST',
-            payload: { bossId, subQuestId },
-        });
-    };
+    const framePath = `M ${cs} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${cs} Z`;
+
+    const corners = [
+        `M 0 ${cs + 10} L 0 ${cs} L ${cs} 0 L ${cs + 10} 0`,
+        `M ${modalWidth - cs - 10} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${cs + 10}`,
+        `M ${modalWidth} ${modalHeight - cs - 10} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${modalWidth - cs - 10} ${modalHeight}`,
+        `M ${cs + 10} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${modalHeight - cs - 10}`,
+    ];
 
     const incompleteQuests = state.dailyQuests.filter(q => !q.isComplete);
     const completeQuests = state.dailyQuests.filter(q => q.isComplete);
-    const activeBosses = state.bossRaids.filter(b => !b.isDefeated);
 
     return (
-        <SystemWindow visible={visible} onClose={onClose}>
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>QUEST LOG</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Text style={styles.closeText}>×</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={styles.overlay}>
+            <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
 
-                {/* Tabs */}
-                <View style={styles.tabs}>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'daily' && styles.activeTab]}
-                        onPress={() => setActiveTab('daily')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'daily' && styles.activeTabText]}>
-                            DAILY QUESTS
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'boss' && styles.activeTab]}
-                        onPress={() => setActiveTab('boss')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'boss' && styles.activeTabText]}>
-                            BOSS RAIDS
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+            <Animated.View style={[
+                styles.modalContainer,
+                { width: modalWidth, height: modalHeight, opacity: opacityAnim, transform: [{ scale: scaleAnim }] }
+            ]}>
+                <Svg width={modalWidth} height={modalHeight} style={StyleSheet.absoluteFill}>
+                    <Path d={framePath} fill={colors.voidBlack} fillOpacity={0.98} />
+                    {Array.from({ length: Math.floor(modalHeight / 4) }).map((_, i) => (
+                        <Line key={i} x1={cs} y1={i * 4} x2={modalWidth - cs} y2={i * 4} stroke={colors.electricCyan} strokeOpacity={0.02} strokeWidth={1} />
+                    ))}
+                    <Path d={framePath} fill="none" stroke={colors.electricCyan} strokeWidth={1.5} />
+                    {corners.map((path, i) => (
+                        <Path key={i} d={path} fill="none" stroke={colors.electricCyan} strokeWidth={2.5} />
+                    ))}
+                </Svg>
 
-                {/* Daily Quests Tab */}
-                {activeTab === 'daily' && (
-                    <ScrollView style={styles.questList} showsVerticalScrollIndicator={false}>
-                        {/* Warning */}
-                        <Animated.View style={[styles.warning, { opacity: fadeAnim }]}>
-                            <Text style={styles.warningText}>
-                                ⚠ WARNING: FAILURE TO COMPLETE WILL RESULT IN PENALTY.
-                            </Text>
-                        </Animated.View>
+                <View style={styles.content}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <Text style={styles.title}>DAILY QUESTS</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <Text style={styles.closeText}>×</Text>
+                        </TouchableOpacity>
+                    </View>
 
+                    {/* Warning */}
+                    <View style={styles.warning}>
+                        <Text style={styles.warningText}>⚠ FAILURE TO COMPLETE WILL RESULT IN PENALTY</Text>
+                    </View>
+
+                    <ScrollView showsVerticalScrollIndicator={false} style={styles.questList}>
                         {/* Add Quest */}
                         {showAddQuest ? (
-                            <Animated.View style={[styles.addQuestForm, { opacity: fadeAnim }]}>
+                            <View style={styles.addQuestForm}>
                                 <TextInput
                                     style={styles.questInput}
                                     value={newQuestTitle}
@@ -116,125 +118,68 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({ visible, onClose }
                                     placeholderTextColor={colors.dimmed}
                                     autoCapitalize="characters"
                                 />
-                                <View style={styles.attributeSelect}>
+                                <View style={styles.attrSelect}>
                                     {(['STR', 'INT', 'SOC', 'HLTH'] as const).map(attr => (
                                         <TouchableOpacity
                                             key={attr}
-                                            style={[
-                                                styles.attrButton,
-                                                newQuestAttribute === attr && styles.attrButtonActive,
-                                            ]}
+                                            style={[styles.attrBtn, newQuestAttribute === attr && styles.attrBtnActive]}
                                             onPress={() => setNewQuestAttribute(attr)}
                                         >
-                                            <Text style={[
-                                                styles.attrButtonText,
-                                                newQuestAttribute === attr && styles.attrButtonTextActive,
-                                            ]}>
+                                            <Text style={[styles.attrText, newQuestAttribute === attr && styles.attrTextActive]}>
                                                 {attr}
                                             </Text>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
-                                <View style={styles.formButtons}>
+                                <View style={styles.formBtns}>
                                     <GlowButton title="ADD" onPress={handleAddQuest} size="small" />
-                                    <GlowButton
-                                        title="CANCEL"
-                                        onPress={() => setShowAddQuest(false)}
-                                        variant="danger"
-                                        size="small"
-                                    />
+                                    <GlowButton title="CANCEL" onPress={() => setShowAddQuest(false)} variant="danger" size="small" />
                                 </View>
-                            </Animated.View>
+                            </View>
                         ) : (
                             <TouchableOpacity style={styles.addButton} onPress={() => setShowAddQuest(true)}>
-                                <Text style={styles.addButtonText}>+ ADD QUEST</Text>
+                                <Text style={styles.addButtonText}>+ Add a Quest</Text>
                             </TouchableOpacity>
                         )}
 
-                        {/* Incomplete Quests */}
-                        {incompleteQuests.length > 0 && (
-                            <View style={styles.questSection}>
-                                <Text style={styles.sectionLabel}>[INCOMPLETE]</Text>
-                                {incompleteQuests.map((quest) => (
-                                    <View key={quest.id}>
-                                        <QuestItem quest={quest} onComplete={handleCompleteQuest} />
-                                    </View>
-                                ))}
-                            </View>
-                        )}
+                        {/* Quest Panels */}
+                        {incompleteQuests.map(quest => (
+                            <QuestPanel key={quest.id} quest={quest} onComplete={handleCompleteQuest} />
+                        ))}
 
-                        {/* Complete Quests */}
                         {completeQuests.length > 0 && (
-                            <View style={styles.questSection}>
-                                <Text style={[styles.sectionLabel, { color: colors.gold }]}>[COMPLETE]</Text>
-                                {completeQuests.map((quest) => (
-                                    <View key={quest.id}>
-                                        <QuestItem quest={quest} onComplete={handleCompleteQuest} />
-                                    </View>
+                            <>
+                                <Text style={styles.sectionLabel}>[COMPLETE]</Text>
+                                {completeQuests.map(quest => (
+                                    <QuestPanel key={quest.id} quest={quest} onComplete={handleCompleteQuest} />
                                 ))}
-                            </View>
+                            </>
                         )}
 
                         {state.dailyQuests.length === 0 && (
-                            <Text style={styles.emptyText}>NO QUESTS ASSIGNED.</Text>
+                            <Text style={styles.emptyText}>NO QUESTS ASSIGNED</Text>
                         )}
                     </ScrollView>
-                )}
-
-                {/* Boss Raids Tab */}
-                {activeTab === 'boss' && (
-                    <ScrollView style={styles.questList} showsVerticalScrollIndicator={false}>
-                        {activeBosses.map((boss) => (
-                            <Animated.View key={boss.id} style={[styles.bossCard, { opacity: fadeAnim }]}>
-                                <Text style={styles.bossName}>⚔ {boss.name}</Text>
-                                <Text style={styles.bossDescription}>{boss.description}</Text>
-
-                                {/* Boss HP Bar */}
-                                <ProgressBar
-                                    current={boss.currentHp}
-                                    max={boss.totalHp}
-                                    variant="boss"
-                                    label="BOSS HP"
-                                    height={20}
-                                    style={styles.bossHpBar}
-                                />
-
-                                {/* Sub Quests */}
-                                <View style={styles.subQuests}>
-                                    {boss.subQuests.map(sq => (
-                                        <TouchableOpacity
-                                            key={sq.id}
-                                            style={[styles.subQuest, sq.isComplete && styles.subQuestComplete]}
-                                            onPress={() => !sq.isComplete && handleCompleteBossSubQuest(boss.id, sq.id)}
-                                            disabled={sq.isComplete}
-                                        >
-                                            <View style={[styles.subQuestCheck, sq.isComplete && styles.subQuestCheckComplete]}>
-                                                {sq.isComplete && <Text style={styles.checkmark}>✓</Text>}
-                                            </View>
-                                            <Text style={[styles.subQuestText, sq.isComplete && styles.subQuestTextComplete]}>
-                                                {sq.title}
-                                            </Text>
-                                            <Text style={styles.subQuestXp}>+{sq.xpReward}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </Animated.View>
-                        ))}
-
-                        {activeBosses.length === 0 && (
-                            <Text style={styles.emptyText}>NO ACTIVE BOSS RAIDS.</Text>
-                        )}
-                    </ScrollView>
-                )}
-            </View>
-        </SystemWindow>
+                </View>
+            </Animated.View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(2, 2, 10, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContainer: {
+        ...glowShadow.cyanIntense,
+    },
     content: {
-        maxHeight: 500,
-        minWidth: 300,
+        flex: 1,
+        padding: spacing.lg,
     },
     header: {
         flexDirection: 'row',
@@ -247,6 +192,8 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xl,
         color: colors.electricCyan,
         letterSpacing: 2,
+        textShadowColor: colors.electricCyan,
+        textShadowRadius: 10,
     },
     closeButton: {
         width: 32,
@@ -258,33 +205,6 @@ const styles = StyleSheet.create({
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.xxl,
         color: colors.paleCyan,
-    },
-    tabs: {
-        flexDirection: 'row',
-        marginBottom: spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.dimmed,
-    },
-    tab: {
-        flex: 1,
-        paddingVertical: spacing.md,
-        alignItems: 'center',
-    },
-    activeTab: {
-        borderBottomWidth: 2,
-        borderBottomColor: colors.electricCyan,
-    },
-    tabText: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
-        color: colors.dimmed,
-        letterSpacing: 2,
-    },
-    activeTabText: {
-        color: colors.electricCyan,
-    },
-    questList: {
-        maxHeight: 380,
     },
     warning: {
         backgroundColor: 'rgba(255, 51, 51, 0.1)',
@@ -300,6 +220,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         letterSpacing: 1,
     },
+    questList: {
+        flex: 1,
+    },
     addButton: {
         borderWidth: 1,
         borderColor: colors.electricCyan,
@@ -308,13 +231,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: spacing.md,
         minHeight: touchTarget.minHeight,
-        justifyContent: 'center',
     },
     addButtonText: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.md,
         color: colors.electricCyan,
-        letterSpacing: 2,
     },
     addQuestForm: {
         borderWidth: 1,
@@ -325,54 +246,47 @@ const styles = StyleSheet.create({
     questInput: {
         borderWidth: 1,
         borderColor: colors.dimmed,
-        backgroundColor: 'transparent',
         color: colors.paleCyan,
         fontFamily: 'Rajdhani-SemiBold',
         fontSize: fontSizes.md,
         padding: spacing.sm,
         marginBottom: spacing.sm,
-        letterSpacing: 1,
     },
-    attributeSelect: {
+    attrSelect: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: spacing.md,
         gap: spacing.sm,
+        marginBottom: spacing.md,
     },
-    attrButton: {
+    attrBtn: {
         flex: 1,
-        paddingVertical: spacing.sm,
+        padding: spacing.sm,
         borderWidth: 1,
         borderColor: colors.dimmed,
         alignItems: 'center',
     },
-    attrButtonActive: {
+    attrBtnActive: {
         borderColor: colors.electricCyan,
-        backgroundColor: 'rgba(0, 234, 255, 0.1)',
+        backgroundColor: colors.glowOverlay,
     },
-    attrButtonText: {
+    attrText: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.sm,
         color: colors.dimmed,
-        letterSpacing: 1,
     },
-    attrButtonTextActive: {
+    attrTextActive: {
         color: colors.electricCyan,
     },
-    formButtons: {
+    formBtns: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: spacing.sm,
     },
-    questSection: {
-        marginBottom: spacing.md,
-    },
     sectionLabel: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.sm,
-        color: colors.alertRed,
+        color: colors.gold,
         letterSpacing: 2,
-        marginBottom: spacing.sm,
+        marginVertical: spacing.sm,
     },
     emptyText: {
         fontFamily: 'Rajdhani-SemiBold',
@@ -380,78 +294,6 @@ const styles = StyleSheet.create({
         color: colors.dimmed,
         textAlign: 'center',
         marginTop: spacing.xl,
-        letterSpacing: 1,
-    },
-    bossCard: {
-        borderWidth: 1,
-        borderColor: colors.alertRed,
-        padding: spacing.md,
-        marginBottom: spacing.md,
-        backgroundColor: 'rgba(255, 51, 51, 0.05)',
-    },
-    bossName: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.lg,
-        color: colors.alertRed,
-        letterSpacing: 2,
-        marginBottom: spacing.xs,
-    },
-    bossDescription: {
-        fontFamily: 'Rajdhani-Regular',
-        fontSize: fontSizes.sm,
-        color: colors.paleCyan,
-        marginBottom: spacing.md,
-    },
-    bossHpBar: {
-        marginBottom: spacing.md,
-    },
-    subQuests: {
-        borderTopWidth: 1,
-        borderTopColor: colors.dimmed,
-        paddingTop: spacing.md,
-    },
-    subQuest: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: spacing.sm,
-        minHeight: touchTarget.minHeight,
-    },
-    subQuestComplete: {
-        opacity: 0.5,
-    },
-    subQuestCheck: {
-        width: 20,
-        height: 20,
-        borderWidth: 1,
-        borderColor: colors.dimmed,
-        marginRight: spacing.sm,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    subQuestCheckComplete: {
-        borderColor: colors.gold,
-        backgroundColor: colors.gold,
-    },
-    checkmark: {
-        color: colors.voidBlack,
-        fontSize: fontSizes.sm,
-        fontWeight: 'bold',
-    },
-    subQuestText: {
-        flex: 1,
-        fontFamily: 'Rajdhani-SemiBold',
-        fontSize: fontSizes.sm,
-        color: colors.paleCyan,
-        letterSpacing: 1,
-    },
-    subQuestTextComplete: {
-        textDecorationLine: 'line-through',
-        color: colors.dimmed,
-    },
-    subQuestXp: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
-        color: colors.gold,
     },
 });
 

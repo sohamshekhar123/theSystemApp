@@ -1,9 +1,11 @@
-// Calendar Modal - Dark grid calendar with deadlines
+// Calendar Modal - Solo Leveling style angular frame
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
-import { SystemWindow } from '../components';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import Svg, { Path, Line } from 'react-native-svg';
 import { useGame } from '../context/GameContext';
-import { colors, fontSizes, spacing } from '../styles/theme';
+import { colors, fontSizes, spacing, glowShadow } from '../styles/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface CalendarModalProps {
     visible: boolean;
@@ -16,151 +18,120 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 export const CalendarModal: React.FC<CalendarModalProps> = ({ visible, onClose }) => {
     const { state } = useGame();
     const [currentDate] = useState(new Date());
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const today = currentDate.getDate();
 
+    const modalWidth = SCREEN_WIDTH * 0.92;
+    const modalHeight = 450;
+    const cs = 15;
+
     useEffect(() => {
         if (visible) {
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }).start();
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 100, friction: 10 }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            ]).start();
         } else {
-            fadeAnim.setValue(0);
+            scaleAnim.setValue(0.9);
+            opacityAnim.setValue(0);
         }
     }, [visible]);
 
-    // Get first day of month and total days
+    if (!visible) return null;
+
     const firstDayOfMonth = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // Generate calendar grid
     const calendarDays: (number | null)[] = [];
-    for (let i = 0; i < firstDayOfMonth; i++) {
-        calendarDays.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-        calendarDays.push(i);
-    }
+    for (let i = 0; i < firstDayOfMonth; i++) calendarDays.push(null);
+    for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
-    // Check if a day has a deadline
     const hasDeadline = (day: number): boolean => {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         return state.deadlines.some(d => d.date.startsWith(dateStr)) ||
             state.bossRaids.some(b => b.deadline?.startsWith(dateStr) && !b.isDefeated);
     };
 
+    const framePath = `M ${cs} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${cs} Z`;
+    const corners = [
+        `M 0 ${cs + 10} L 0 ${cs} L ${cs} 0 L ${cs + 10} 0`,
+        `M ${modalWidth - cs - 10} 0 L ${modalWidth - cs} 0 L ${modalWidth} ${cs} L ${modalWidth} ${cs + 10}`,
+        `M ${modalWidth} ${modalHeight - cs - 10} L ${modalWidth} ${modalHeight - cs} L ${modalWidth - cs} ${modalHeight} L ${modalWidth - cs - 10} ${modalHeight}`,
+        `M ${cs + 10} ${modalHeight} L ${cs} ${modalHeight} L 0 ${modalHeight - cs} L 0 ${modalHeight - cs - 10}`,
+    ];
+
     return (
-        <SystemWindow visible={visible} onClose={onClose}>
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>CALENDAR</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Text style={styles.closeText}>×</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={styles.overlay}>
+            <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
 
-                {/* Month/Year */}
-                <Text style={styles.monthYear}>
-                    {MONTHS[month]} {year}
-                </Text>
-
-                {/* Day headers */}
-                <View style={styles.dayHeaders}>
-                    {DAYS.map(day => (
-                        <View key={day} style={styles.dayHeader}>
-                            <Text style={styles.dayHeaderText}>{day}</Text>
-                        </View>
+            <Animated.View style={[
+                styles.modalContainer,
+                { width: modalWidth, height: modalHeight, opacity: opacityAnim, transform: [{ scale: scaleAnim }] }
+            ]}>
+                <Svg width={modalWidth} height={modalHeight} style={StyleSheet.absoluteFill}>
+                    <Path d={framePath} fill={colors.voidBlack} fillOpacity={0.98} />
+                    <Path d={framePath} fill="none" stroke={colors.electricCyan} strokeWidth={1.5} />
+                    {corners.map((path, i) => (
+                        <Path key={i} d={path} fill="none" stroke={colors.electricCyan} strokeWidth={2.5} />
                     ))}
-                </View>
+                </Svg>
 
-                {/* Calendar grid */}
-                <View style={styles.calendarGrid}>
-                    {calendarDays.map((day, index) => (
-                        <View
-                            key={index}
-                            style={[
-                                styles.dayCell,
-                                day === today && styles.todayCell,
-                            ]}
-                        >
-                            {day && (
-                                <>
-                                    <Text
-                                        style={[
-                                            styles.dayText,
-                                            day === today && styles.todayText,
-                                            hasDeadline(day) && styles.deadlineDayText,
-                                        ]}
-                                    >
-                                        {day}
-                                    </Text>
-                                    {hasDeadline(day) && (
-                                        <View style={styles.deadlineIndicator}>
-                                            <Text style={styles.deadlineIcon}>!</Text>
-                                        </View>
-                                    )}
-                                </>
-                            )}
-                        </View>
-                    ))}
-                </View>
+                <View style={styles.content}>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>CALENDAR</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <Text style={styles.closeText}>×</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                {/* Upcoming Deadlines */}
-                <View style={styles.upcomingSection}>
-                    <Text style={styles.sectionTitle}>UPCOMING DEADLINES</Text>
-                    <ScrollView style={styles.deadlineList} showsVerticalScrollIndicator={false}>
-                        {state.deadlines.length === 0 && state.bossRaids.filter(b => b.deadline && !b.isDefeated).length === 0 ? (
-                            <Text style={styles.emptyText}>NO UPCOMING DEADLINES.</Text>
-                        ) : (
-                            <>
-                                {state.deadlines.map((deadline) => (
-                                    <Animated.View
-                                        key={deadline.id}
-                                        style={[styles.deadlineItem, { opacity: fadeAnim }]}
-                                    >
-                                        <View style={styles.deadlineMarker} />
-                                        <View style={styles.deadlineInfo}>
-                                            <Text style={styles.deadlineTitle}>{deadline.title}</Text>
-                                            <Text style={styles.deadlineDate}>
-                                                {new Date(deadline.date).toLocaleDateString()}
-                                            </Text>
-                                        </View>
-                                    </Animated.View>
-                                ))}
-                                {state.bossRaids.filter(b => b.deadline && !b.isDefeated).map((boss) => (
-                                    <Animated.View
-                                        key={boss.id}
-                                        style={[styles.deadlineItem, styles.bossDeadline, { opacity: fadeAnim }]}
-                                    >
-                                        <View style={[styles.deadlineMarker, { backgroundColor: colors.alertRed }]} />
-                                        <View style={styles.deadlineInfo}>
-                                            <Text style={[styles.deadlineTitle, { color: colors.alertRed }]}>
-                                                ⚔ {boss.name}
-                                            </Text>
-                                            <Text style={styles.deadlineDate}>
-                                                {boss.deadline ? new Date(boss.deadline).toLocaleDateString() : 'NO DEADLINE'}
-                                            </Text>
-                                        </View>
-                                    </Animated.View>
-                                ))}
-                            </>
-                        )}
-                    </ScrollView>
+                    <Text style={styles.monthYear}>{MONTHS[month]} {year}</Text>
+
+                    <View style={styles.dayHeaders}>
+                        {DAYS.map(day => (
+                            <View key={day} style={styles.dayHeader}>
+                                <Text style={styles.dayHeaderText}>{day}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <View style={styles.calendarGrid}>
+                        {calendarDays.map((day, index) => (
+                            <View key={index} style={[styles.dayCell, day === today && styles.todayCell]}>
+                                {day && (
+                                    <>
+                                        <Text style={[styles.dayText, day === today && styles.todayText, hasDeadline(day) && styles.deadlineText]}>
+                                            {day}
+                                        </Text>
+                                        {hasDeadline(day) && <View style={styles.deadlineIndicator} />}
+                                    </>
+                                )}
+                            </View>
+                        ))}
+                    </View>
                 </View>
-            </View>
-        </SystemWindow>
+            </Animated.View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(2, 2, 10, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContainer: {
+        ...glowShadow.cyanIntense,
+    },
     content: {
-        minWidth: 320,
+        flex: 1,
+        padding: spacing.lg,
     },
     header: {
         flexDirection: 'row',
@@ -173,6 +144,8 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xl,
         color: colors.electricCyan,
         letterSpacing: 2,
+        textShadowColor: colors.electricCyan,
+        textShadowRadius: 10,
     },
     closeButton: {
         width: 32,
@@ -200,13 +173,11 @@ const styles = StyleSheet.create({
     dayHeader: {
         flex: 1,
         alignItems: 'center',
-        paddingVertical: spacing.xs,
     },
     dayHeaderText: {
         fontFamily: 'Rajdhani-Bold',
         fontSize: fontSizes.xs,
         color: colors.dimmed,
-        letterSpacing: 1,
     },
     calendarGrid: {
         flexDirection: 'row',
@@ -219,16 +190,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.dimmed,
-        position: 'relative',
     },
     todayCell: {
         borderColor: colors.electricCyan,
-        backgroundColor: 'rgba(0, 234, 255, 0.1)',
-        shadowColor: colors.electricCyan,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 5,
-        elevation: 3,
+        backgroundColor: colors.glowOverlay,
     },
     dayText: {
         fontFamily: 'Rajdhani-SemiBold',
@@ -239,78 +204,16 @@ const styles = StyleSheet.create({
         color: colors.electricCyan,
         fontFamily: 'Rajdhani-Bold',
     },
-    deadlineDayText: {
+    deadlineText: {
         color: colors.alertRed,
     },
     deadlineIndicator: {
         position: 'absolute',
         top: 2,
         right: 2,
-        width: 14,
-        height: 14,
+        width: 6,
+        height: 6,
         backgroundColor: colors.alertRed,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    deadlineIcon: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: 10,
-        color: colors.voidBlack,
-    },
-    upcomingSection: {
-        marginTop: spacing.lg,
-        borderTopWidth: 1,
-        borderTopColor: colors.dimmed,
-        paddingTop: spacing.md,
-        maxHeight: 150,
-    },
-    sectionTitle: {
-        fontFamily: 'Rajdhani-Bold',
-        fontSize: fontSizes.sm,
-        color: colors.electricCyan,
-        letterSpacing: 2,
-        marginBottom: spacing.sm,
-    },
-    deadlineList: {
-        maxHeight: 120,
-    },
-    emptyText: {
-        fontFamily: 'Rajdhani-SemiBold',
-        fontSize: fontSizes.sm,
-        color: colors.dimmed,
-        textAlign: 'center',
-        letterSpacing: 1,
-    },
-    deadlineItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.dimmed,
-    },
-    bossDeadline: {
-        borderBottomColor: colors.alertRed,
-    },
-    deadlineMarker: {
-        width: 8,
-        height: 8,
-        backgroundColor: colors.gold,
-        marginRight: spacing.sm,
-    },
-    deadlineInfo: {
-        flex: 1,
-    },
-    deadlineTitle: {
-        fontFamily: 'Rajdhani-SemiBold',
-        fontSize: fontSizes.sm,
-        color: colors.paleCyan,
-        letterSpacing: 1,
-    },
-    deadlineDate: {
-        fontFamily: 'Rajdhani-Regular',
-        fontSize: fontSizes.xs,
-        color: colors.dimmed,
-        letterSpacing: 1,
     },
 });
 

@@ -1,8 +1,12 @@
 // Components barrel export
-export { default as GlowButton } from './GlowButton';
-export { default as SystemWindow } from './SystemWindow';
-export { default as ProgressBar } from './ProgressBar';
-export { default as TypewriterText } from './TypewriterText';
-export { default as RankBadge } from './RankBadge';
-export { default as FloatingActionButton } from './FloatingActionButton';
-export { default as QuestItem } from './QuestItem';
+export { GlowButton } from './GlowButton';
+export { SystemWindow } from './SystemWindow';
+export { SystemModal } from './SystemModal';
+export { AngularFrame } from './AngularFrame';
+export { ProgressBar } from './ProgressBar';
+export { TypewriterText } from './TypewriterText';
+export { RankBadge } from './RankBadge';
+export { FloatingActionButton } from './FloatingActionButton';
+export { QuestItem } from './QuestItem';
+export { QuestPanel } from './QuestPanel';
+export { StatIcon } from './StatIcon';
